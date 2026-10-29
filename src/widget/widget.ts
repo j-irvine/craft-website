@@ -3,7 +3,8 @@
 // The script puts a <craft-find-your-person> right where it sits, filling the Showit embed box.
 // Everything renders in a shadow root so the Showit page's styles and ours never collide.
 
-import { CSS } from './styles'
+import { MARK_SVG } from './mark'
+import { CSS, EPILOGUE, fontFaces } from './styles'
 
 interface Specialty {
   key: string
@@ -38,6 +39,7 @@ class FindYourPerson extends HTMLElement {
   private open = new Set<string>()
 
   connectedCallback() {
+    if (this.getAttribute('data-fonts') !== 'none') loadFonts(this.getAttribute('data-api') ?? '')
     this.root.innerHTML = `<style>${CSS}</style><div class="fyp" aria-busy="true"><p class="note">Loading instructors…</p></div>`
     void this.load()
   }
@@ -71,10 +73,9 @@ class FindYourPerson extends HTMLElement {
       `<button class="chip" type="button" data-filter="${key ?? ''}" aria-pressed="${this.filter === key}">${esc(label)}</button>`
 
     const card = (i: Instructor) => {
-      const initial = esc(i.name[0] ?? '')
       const photo = i.photo
         ? `<img src="${esc(i.photo)}" alt="" loading="lazy">`
-        : `<div class="placeholder" aria-hidden="true"><span>${initial}</span></div>`
+        : `<div class="placeholder">${MARK_SVG}</div>`
       const tags = i.specialties
         .map((k) => `<li class="${k === this.filter ? 'on' : ''}">${esc(labels.get(k) ?? k)}</li>`)
         .join('')
@@ -160,6 +161,21 @@ class FindYourPerson extends HTMLElement {
     }
     toast.classList.add('show')
     setTimeout(() => toast.classList.remove('show'), 6000)
+  }
+}
+
+/** Once per page: the brand fonts from the Worker, and Epilogue from Google Fonts. */
+function loadFonts(base: string) {
+  if (document.getElementById('craft-fonts')) return
+  const style = document.createElement('style')
+  style.id = 'craft-fonts'
+  style.textContent = fontFaces(base)
+  document.head.append(style)
+  if (!document.querySelector(`link[href="${EPILOGUE}"]`)) {
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = EPILOGUE
+    document.head.append(link)
   }
 }
 

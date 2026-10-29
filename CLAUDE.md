@@ -92,6 +92,8 @@ Open decisions from the brief. Each has a proposal; none are confirmed yet. Upda
 
 - `src/worker.ts`: the Cloudflare Worker. A cron every 5 minutes reads the sheet (`src/google.ts`, read-only service account), turns it into the client-safe list (`src/instructors.ts`) and stores it in KV (`DATA`), writing only when something changed (KV's free tier allows 1,000 writes a day).
 - `src/widget/`: the embed. A script tag (not an iframe) that puts a `<craft-find-your-person>` element where it sits, rendered in a shadow root so Showit's styles and ours don't collide. A script tag rather than an iframe so it can use the brand fonts the Showit page already loads, and scroll the page to the Arketa calendar. Fills its Showit box (`height: 100%`), and switches to the phone layout by the box's width (container query).
+- Look: follows the Mini Brand Book in Craft Apps (`brand/`): KK Topo names, Trio Grotesk Bold wide caps for chips, labels and the square chocolate CTA, Epilogue body, cream cards, mint tags, and the tertiary logo on forest as the no-photo placeholder. `data-theme` picks colors for the section it sits on (chocolate default, `cream`, `forest`). The first preview used pill buttons and a serif and read as off-brand (owners, Oct 29).
+- Fonts: the widget declares them on the page from the Worker's `/fonts/*.woff2`, served from KV (`scripts/upload-fonts.sh`), because Trio Grotesk's license keeps it out of this public repo. Epilogue comes from Google Fonts.
 - `preview/sample.json`: made-up instructors for previews. Real instructor data never goes in this repo.
 - Not built yet: photos (Drive folder → cropped copies served by the Worker), the Showit steps.
 

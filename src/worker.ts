@@ -65,6 +65,16 @@ export default {
       })
     }
 
+    const font = /^\/fonts\/(kk-topo|trio-grotesk-bold)\.woff2$/.exec(url.pathname)
+    if (font) {
+      // Uploaded once with scripts/upload-fonts.sh: the brand fonts stay out of this public repo.
+      const data = await env.DATA.get(`font:${font[1]}`, 'arrayBuffer')
+      if (!data) return new Response('Not found', { status: 404 })
+      return new Response(data, {
+        headers: { 'content-type': 'font/woff2', 'cache-control': 'public, max-age=31536000', 'access-control-allow-origin': '*' },
+      })
+    }
+
     if (url.pathname === '/api/instructors') {
       const location = url.searchParams.get('location')
       if (!isLocation(location)) return json({ error: 'location must be park-slope or uws' })
