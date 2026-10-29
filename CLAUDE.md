@@ -80,10 +80,44 @@ Open decisions from the brief. Each has a proposal; none are confirmed yet. Upda
 
 | Decision | Proposal | Status |
 | --- | --- | --- |
-| Where to host the components | Cloudflare Workers, same as Craft Apps (`studio-app` deploys with Wrangler and already signs in to Google with a service account in `worker/push.ts`). A Worker serves the embed script/iframe, a JSON API, and photos (R2). | Proposed |
-| How data refreshes; how fast a hidden instructor disappears | A cron in the Worker reads the sheet every 5 minutes and caches the cleaned, client-safe list. Hiding takes effect within about 5 minutes. | Proposed |
-| Field mapping from the form's columns | Needs the sheet. | Waiting on sheet |
-| Photo matching | Support both: filename by form email first, then a photo link column in the row. Pro shoot photos override both. | Proposed |
-| Short client-facing bio question | Yes, optional, 1–2 sentences, so cards aren't just tags. | Proposed |
+| Where to host the components | Cloudflare Workers, same as Craft Apps (`studio-app` deploys with Wrangler and already signs in to Google with a service account in `worker/push.ts`). A Worker serves the embed script/iframe, a JSON API, and photos (R2). | Confirmed (Oct 29) |
+| How data refreshes; how fast a hidden instructor disappears | A cron in the Worker reads the sheet every 5 minutes and caches the cleaned, client-safe list. Hiding takes effect within about 5 minutes. Owners: fine if it's free; speed isn't important. | Confirmed (Oct 29) |
+| Field mapping from the form's columns | See **Instructor sheet mapping** below. | Proposed, specialty rule open |
+| Photo matching | Support both: filename by form email first, then a photo link column in the row. Pro shoot photos override both. | Confirmed (Oct 29) |
+| Short client-facing bio question | Yes, optional, 1–2 sentences, so cards aren't just tags. | Confirmed (Oct 29) |
 | Can Arketa filter privates by instructor? | Yes per Arketa's help center: each team member has a "Private availability" direct link and embed code (Staff → Team → ⋯ → Embed). "Book with [name]" can open that instructor's link, stored per instructor (e.g. a sheet column). Need to confirm the link covers privates and duets. Source: https://help.arketa.com/appointments/availability/share-calendar | Likely yes, to confirm |
-| Does the Showit plan support custom embed code? | Needs a check of the Showit account. | Open |
+| Does the Showit plan support custom embed code? | Owners are on "Showit Annual". Showit's public docs don't tie the Embed Code element to a plan; confirm by checking the editor's add-element menu shows "Embed Code" (or the existing Arketa schedule embed on the site already proves it). | Likely yes, to confirm |
+
+## Instructor sheet mapping
+
+Sheet: the "Form Responses 1" tab of "Craft Pilates Instructor Questionnaire (Responses)" (28 responses on Oct 29, 2026; 21 said yes to privates). Column headers are matched by their text, not position, so reordering or adding columns doesn't break anything.
+
+**Published (client-safe):**
+
+| Form column | On the website |
+| --- | --- |
+| Your name | First name, with last initial only if two instructors share a first name (same rule as the studio app) |
+| How many years have you taught Pilates? | "N years teaching". Answers are free text ("2.5", "Two years", "<1", "10 yrs"), so the number is parsed; anything unparseable is left off the card and reported to staff |
+| Where did you complete your Pilates certification? | Shown as written. Answers run up to ~150 characters, so the card shows a short line and expands on tap |
+| For each client area… [17 areas] | Specialty tags and filter chips (rule and grouping below) |
+| *New:* location for privates (form question) | Which privates page they appear on (Park Slope, UWS, or both) |
+| *New:* short bio (optional form question) | 1–2 sentence bio on the card |
+
+**Used but never shown:** Timestamp (latest response wins), Email Address (match key for duplicates and photos), "Are you currently interested in taking private clients at Craft?" (only "Yes" appears on the site; "Not currently" is hidden).
+
+**Never published:** equipment, "If you selected other", the three free-text answers about other conditions, additional training, and matching notes. These are staff-only.
+
+**Columns staff add to the sheet (right of the form columns):** Hide from website (checkbox), Arketa booking link (the instructor's private availability link), Photo link (only when the photo can't be matched by email).
+
+**Client areas → specialties.** Each of the 17 areas is a checkbox grid: Interested / Have taught a few / Have substantial experience / Completed relevant training / Have not taught yet. Proposed rule: an instructor gets a specialty only with *substantial experience* or *completed training* in it ("interested" and "a few clients" don't count). Proposed grouping into 8 public chips so filters fit a fixed-height box:
+
+- Beginners — Beginners or returning after a break
+- Strength & athletic — Strength and athletic performance
+- Pregnancy & postpartum — Pregnancy; Postpartum
+- Older adults & bone health — Older adults, balance and mobility; Low bone density, including osteoporosis
+- Teens — Teens
+- Back pain — Sciatica; Herniated or bulging discs; Other back injuries or persistent back pain; Scoliosis
+- Injury & surgery recovery — Returning after injury…; Shoulder, hip or knee injuries; Returning after surgery or joint replacement; Arthritis and other joint conditions; Hypermobility and joint stability
+- Neurological conditions — Neurological conditions affecting movement or balance
+
+Chip wording and the rule need the owners' OK before launch (they're public claims).
