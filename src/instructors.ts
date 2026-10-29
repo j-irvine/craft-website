@@ -161,6 +161,50 @@ export async function instructorId(email: string): Promise<string> {
   return [...new Uint8Array(digest)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+/** Latest response per email. Sheet rows are in submission order, but compare timestamps anyway. */
+function latestByEmail(body: unknown[][], cols: Columns) {
+  const latest = new Map<string, { row: unknown[]; rowNumber: number; time: number }>()
+  body.forEach((row, i) => {
+    const email = String(row[cols.email] ?? '').trim().toLowerCase()
+    if (!email) return
+    const time = cols.timestamp >= 0 ? Date.parse(String(row[cols.timestamp] ?? '')) || 0 : 0
+    const prev = latest.get(email)
+    if (!prev || time >= prev.time) latest.set(email, { row, rowNumber: i + 2, time })
+  })
+  return latest
+}
+
+/** The Drive file id in a row's "Photo link" column, by lowercased email (latest response). */
+export function photoLinks(rows: unknown[][]): Map<string, string> {
+  const [header, ...body] = rows
+  const cols = findColumns((header ?? []).map(String))
+  const out = new Map<string, string>()
+  if (cols.photoLink < 0 || cols.email < 0) return out
+  for (const [email, { row }] of latestByEmail(body, cols)) {
+    const id = driveFileId(row[cols.photoLink])
+    if (id) out.set(email, id)
+  }
+  return out
+}
+
+/** Emails of everyone who could be shown (taking privates, not hidden): whose photos to keep. */
+export function candidateEmails(rows: unknown[][]): string[] {
+  const [header, ...body] = rows
+  const cols = findColumns((header ?? []).map(String))
+  if (cols.email < 0 || cols.privates < 0) return []
+  return [...latestByEmail(body, cols)]
+    .filter(([, { row }]) => !(cols.hide >= 0 && isChecked(row[cols.hide])) && String(row[cols.privates] ?? '').trim().toLowerCase() === 'yes')
+    .map(([email]) => email)
+}
+
+/** A Drive file id from a share link (".../file/d/<id>/view", "...open?id=<id>") or a bare id. */
+export function driveFileId(link: unknown): string | null {
+  const s = String(link ?? '').trim()
+  if (!s) return null
+  const m = /\/d\/([\w-]{10,})/.exec(s) ?? /[?&]id=([\w-]{10,})/.exec(s) ?? /^([\w-]{20,})$/.exec(s)
+  return m ? m[1] : null
+}
+
 /**
  * The whole sheet (header row first) to the public list. `photos` maps a lowercased form email to the
  * URL the website serves that instructor's photo from.
@@ -177,15 +221,7 @@ export async function buildInstructors(
   }
   if (cols.locations < 0) warnings.push({ row: 1, message: 'No location column yet, so nobody is shown' })
 
-  // Latest response per email wins. Sheet rows are in submission order, but compare timestamps anyway.
-  const latest = new Map<string, { row: unknown[]; rowNumber: number; time: number }>()
-  body.forEach((row, i) => {
-    const email = String(row[cols.email] ?? '').trim().toLowerCase()
-    if (!email) return
-    const time = cols.timestamp >= 0 ? Date.parse(String(row[cols.timestamp] ?? '')) || 0 : 0
-    const prev = latest.get(email)
-    if (!prev || time >= prev.time) latest.set(email, { row, rowNumber: i + 2, time })
-  })
+  const latest = latestByEmail(body, cols)
 
   const people: (PublicInstructor & { first: string; last: string })[] = []
   for (const [email, { row, rowNumber }] of latest) {

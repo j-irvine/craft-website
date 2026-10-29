@@ -28,7 +28,7 @@ The Worker's pages: `/find-your-person.js` (the embed), `/api/instructors?locati
 
 1. A Google Cloud service account with the Sheets and Drive APIs enabled. Share the responses sheet (and later the photos folder) with its email as **Viewer**.
 2. `npx wrangler@4 kv namespace create DATA` and paste the id into `wrangler.jsonc`.
-3. `npx wrangler@4 secret put GOOGLE_SERVICE_ACCOUNT` (the key JSON) and `npx wrangler@4 secret put SHEET_ID` (from the sheet's URL).
+3. `npx wrangler@4 secret put GOOGLE_SERVICE_ACCOUNT` (the key JSON), `npx wrangler@4 secret put SHEET_ID` (from the sheet's URL) and `npx wrangler@4 secret put PHOTOS_FOLDER_ID` (from the website-photos folder's URL; share the folder with the service account too). Photos are named by the instructor's form email (`ana@example.com.jpg`); shoot photos go in a `Professional` subfolder and win.
 4. `scripts/upload-fonts.sh <studio-app>/brand/fonts/Type` (the brand fonts live in KV, not this repo: Trio Grotesk is licensed).
 5. `npm run deploy`.
 

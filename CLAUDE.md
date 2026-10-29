@@ -95,7 +95,8 @@ Open decisions from the brief. Each has a proposal; none are confirmed yet. Upda
 - Look: follows the Mini Brand Book in Craft Apps (`brand/`): KK Topo names, Trio Grotesk Bold wide caps for chips, labels and the square chocolate CTA, Epilogue body, cream cards, mint tags, and the tertiary logo on forest as the no-photo placeholder. `data-theme` picks colors for the section it sits on: cream is the default and what the owners chose for the privates pages (Oct 29); `chocolate` and `forest` exist too. The first preview used pill buttons and a serif and read as off-brand (owners, Oct 29).
 - Fonts: the widget declares them on the page from the Worker's `/fonts/*.woff2`, served from KV (`scripts/upload-fonts.sh`), because Trio Grotesk's license keeps it out of this public repo. Epilogue comes from Google Fonts.
 - `preview/sample.json`: made-up instructors for previews. Real instructor data never goes in this repo.
-- Not built yet: photos (Drive folder → cropped copies served by the Worker), the Showit steps.
+- `src/photos.ts`: each cron run lists the website-photos Drive folder (`PHOTOS_FOLDER_ID`) and copies new or changed photos into KV, served at `/photos/<id>-<version>.jpg` with a year's cache. Google resizes them (the Drive thumbnail at 900 px, always JPEG, so iPhone HEIC photos work); cards crop them to one shape with CSS (`object-fit: cover`, biased to the top for faces). Which photo: a file named by form email in the folder's **Professional** subfolder (shoot photos), else one named by form email in the folder itself, else the row's "Photo link". No photo: the CRAFT mark on forest.
+- Not built yet: the Showit steps.
 
 ## Instructor sheet mapping
 

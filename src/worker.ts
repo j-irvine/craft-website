@@ -2,8 +2,9 @@
 // A cron re-reads the instructor sheet every 5 minutes and keeps the client-safe list in KV.
 
 import { WIDGET_JS } from './generated/widget'
-import { buildInstructors, forLocation, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
+import { buildInstructors, candidateEmails, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
+import { syncPhotos } from './photos'
 import { previewPage } from './preview'
 
 export interface Env {
@@ -13,6 +14,8 @@ export interface Env {
   /** The responses sheet's id, from its URL (secret, so it stays out of this public repo). */
   SHEET_ID: string
   SHEET_TAB: string
+  /** The website-photos Drive folder's id (secret), shared with the service account as Viewer. Optional. */
+  PHOTOS_FOLDER_ID?: string
 }
 
 interface Stored extends SheetResult {
@@ -40,7 +43,13 @@ export async function refresh(env: Env): Promise<void> {
     const sa = parseServiceAccount(env.GOOGLE_SERVICE_ACCOUNT)
     if (!sa) throw new Error('GOOGLE_SERVICE_ACCOUNT is missing or not a service account key')
     const rows = await readSheet(sa, env.SHEET_ID, env.SHEET_TAB)
-    const result = await buildInstructors(rows)
+    let photos = new Map<string, string>()
+    let photoErrors: string[] = []
+    if (env.PHOTOS_FOLDER_ID) {
+      ;({ photos, errors: photoErrors } = await syncPhotos(env.DATA, sa, env.PHOTOS_FOLDER_ID, photoLinks(rows), candidateEmails(rows)))
+    }
+    const result = await buildInstructors(rows, photos)
+    result.warnings.push(...photoErrors.map((message) => ({ row: 0, message })))
     // KV's free tier allows 1,000 writes a day; only write when something changed.
     const previous = await env.DATA.get<Stored>('instructors', 'json')
     const same = previous && JSON.stringify([previous.instructors, previous.warnings]) === JSON.stringify([result.instructors, result.warnings])
@@ -73,6 +82,14 @@ export default {
       return new Response(data, {
         headers: { 'content-type': 'font/woff2', 'cache-control': 'public, max-age=31536000', 'access-control-allow-origin': '*' },
       })
+    }
+
+    const photo = /^\/photos\/([0-9a-f]{12}-[\w-]{1,40}\.jpg)$/.exec(url.pathname)
+    if (photo) {
+      const data = await env.DATA.get(`photo:${photo[1]}`, 'arrayBuffer')
+      if (!data) return new Response('Not found', { status: 404 })
+      // Each version has its own name, so it can be cached for good.
+      return new Response(data, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000, immutable' } })
     }
 
     if (url.pathname === '/api/instructors') {

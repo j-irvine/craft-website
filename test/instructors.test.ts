@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildInstructors, forLocation, offeredSpecialties, parseLocations, parseYears, yearsLabel } from '../src/instructors'
+import { buildInstructors, candidateEmails, driveFileId, forLocation, offeredSpecialties, parseLocations, parseYears, photoLinks, yearsLabel } from '../src/instructors'
+import { choosePhotos, emailFromName } from '../src/photos'
 
 // The real form's headers (29 Oct 2026), plus the columns being added. Rows below are made up.
 const AREAS = [
@@ -178,5 +179,41 @@ describe('buildInstructors', () => {
     expect(forLocation(instructors, 'uws').map((i) => i.name)).toEqual(['Ana', 'Bea'])
     expect(forLocation(instructors, 'park-slope').map((i) => i.name)).toEqual(['Ana'])
     expect(warnings.map((w) => w.row)).toEqual([3, 4])
+  })
+})
+
+describe('photos', () => {
+  it('reads Drive ids from share links', () => {
+    expect(driveFileId('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrS/view?usp=sharing')).toBe('1AbCdEfGhIjKlMnOpQrS')
+    expect(driveFileId('https://drive.google.com/open?id=1AbCdEfGhIjKlMnOpQrS')).toBe('1AbCdEfGhIjKlMnOpQrS')
+    expect(driveFileId('not a link')).toBeNull()
+  })
+
+  it('names photos by email', () => {
+    expect(emailFromName('Ana@Example.com.JPG')).toBe('ana@example.com')
+    expect(emailFromName('ana@example.com')).toBe('ana@example.com')
+    expect(emailFromName('IMG_1234.jpg')).toBeNull()
+  })
+
+  it('prefers professional photos, then emailed ones, then the row link', () => {
+    const img = (id: string, name: string) => ({ id, name, mimeType: 'image/jpeg' })
+    const chosen = choosePhotos(
+      [img('pro', 'a@x.com.jpg')],
+      [img('mail-a', 'a@x.com.jpg'), img('mail-b', 'b@x.com.heic'), { id: 'f', name: 'c@x.com', mimeType: 'application/vnd.google-apps.folder' }],
+      new Map([['b@x.com', 'link-b'], ['c@x.com', 'link-c']]),
+    )
+    expect(Object.fromEntries(chosen)).toEqual({ 'a@x.com': 'pro', 'b@x.com': 'mail-b', 'c@x.com': 'link-c' })
+  })
+
+  it('collects photo links and candidates from the latest responses', async () => {
+    const header = [...HEADER, 'Photo link']
+    const rows = [
+      header,
+      [...row({ email: 'a@x.com' }), 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrS/view'],
+      [...row({ email: 'b@x.com', privates: 'Not currently' }), ''],
+      [...row({ email: 'c@x.com', hide: 'TRUE' }), ''],
+    ]
+    expect(Object.fromEntries(photoLinks(rows))).toEqual({ 'a@x.com': '1AbCdEfGhIjKlMnOpQrS' })
+    expect(candidateEmails(rows)).toEqual(['a@x.com'])
   })
 })

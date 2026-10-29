@@ -98,7 +98,7 @@ export const CSS = `
   background: var(--card); color: var(--card-text); border-radius: 0; overflow: hidden;
 }
 .photo { flex: 1 1 auto; min-height: 120px; position: relative; background: var(--mark-bg); }
-.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
 .placeholder { position: absolute; inset: 0; display: grid; place-items: center; }
 .placeholder svg { width: 58%; max-height: 80%; }
 .body { flex: none; height: 252px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }

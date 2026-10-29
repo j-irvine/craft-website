@@ -77,7 +77,7 @@ class FindYourPerson extends HTMLElement {
 
     const card = (i: Instructor) => {
       const photo = i.photo
-        ? `<img src="${esc(i.photo)}" alt="" loading="lazy">`
+        ? `<img src="${esc(new URL(i.photo, this.getAttribute('data-api') || location.href).href)}" alt="" loading="lazy">`
         : `<div class="placeholder">${MARK_SVG}</div>`
       const tags = i.specialties
         .map((k) => `<li class="${k === this.filter ? 'on' : ''}">${esc(labels.get(k) ?? k)}</li>`)
