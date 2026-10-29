@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildInstructors, forLocation, parseLocations, parseYears, yearsLabel } from '../src/instructors'
+import { buildInstructors, forLocation, offeredSpecialties, parseLocations, parseYears, yearsLabel } from '../src/instructors'
 
 // The real form's headers (29 Oct 2026), plus the columns being added. Rows below are made up.
 const AREAS = [
@@ -37,7 +37,6 @@ const HEADER = [
   'Which locations are you available for privates?',
   'Short bio for the website',
   'Hide from website',
-  'Arketa booking link',
 ]
 
 type Opts = Partial<{
@@ -52,7 +51,6 @@ type Opts = Partial<{
   location: string
   bio: string
   hide: string
-  book: string
 }>
 
 function row(o: Opts): unknown[] {
@@ -72,7 +70,6 @@ function row(o: Opts): unknown[] {
     o.location ?? 'Park Slope',
     o.bio ?? '',
     o.hide ?? 'FALSE',
-    o.book ?? '',
   ]
 }
 
@@ -108,6 +105,17 @@ describe('parseLocations', () => {
     expect(parseLocations('Park Slope, UWS')).toEqual(['park-slope', 'uws'])
     expect(parseLocations('Upper West Side')).toEqual(['uws'])
     expect(parseLocations('')).toEqual([])
+  })
+})
+
+describe('offeredSpecialties', () => {
+  it('offers only chips someone at that studio has', async () => {
+    const { instructors } = await build(
+      { email: 'a@x.com', name: 'Ana', location: 'Park Slope', areas: { Teens: 'Completed relevant training' } },
+      { email: 'b@x.com', name: 'Bea', location: 'UWS', areas: { Sciatica: 'Completed relevant training' } },
+    )
+    expect(offeredSpecialties(forLocation(instructors, 'park-slope')).map((s) => s.key)).toEqual(['teens'])
+    expect(offeredSpecialties(forLocation(instructors, 'uws')).map((s) => s.label)).toEqual(['Back pain'])
   })
 })
 
@@ -164,16 +172,11 @@ describe('buildInstructors', () => {
   it('filters by location and warns about rows staff should fix', async () => {
     const { instructors, warnings } = await build(
       { email: 'a@x.com', name: 'Ana', location: 'Park Slope, UWS' },
-      { email: 'b@x.com', name: 'Bea', location: 'UWS', years: 'a while', book: 'not a link' },
+      { email: 'b@x.com', name: 'Bea', location: 'UWS', years: 'a while' },
       { email: 'c@x.com', name: 'Cleo', location: '' },
     )
     expect(forLocation(instructors, 'uws').map((i) => i.name)).toEqual(['Ana', 'Bea'])
     expect(forLocation(instructors, 'park-slope').map((i) => i.name)).toEqual(['Ana'])
-    expect(warnings.map((w) => w.row)).toEqual([3, 3, 4])
-  })
-
-  it('keeps https booking links', async () => {
-    const { instructors } = await build({ book: 'https://app.arketa.co/craftpilates/x' })
-    expect(instructors[0].bookUrl).toBe('https://app.arketa.co/craftpilates/x')
+    expect(warnings.map((w) => w.row)).toEqual([3, 4])
   })
 })

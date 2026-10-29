@@ -49,7 +49,6 @@ export interface PublicInstructor {
   yearsLabel: string | null
   certification: string | null
   bio: string | null
-  bookUrl: string | null
   photo: string | null
 }
 
@@ -74,7 +73,6 @@ interface Columns {
   locations: number
   bio: number
   hide: number
-  bookUrl: number
   photoLink: number
   areas: Map<string, number>
 }
@@ -98,7 +96,6 @@ export function findColumns(headerRow: string[]): Columns {
     locations: find(h, (x) => x.includes('location')),
     bio: find(h, (x) => /\bbio\b/.test(x)),
     hide: find(h, (x) => x.includes('hide from website')),
-    bookUrl: find(h, (x) => x.includes('arketa') || x.includes('booking link')),
     photoLink: find(h, (x) => x.includes('photo')),
     areas,
   }
@@ -157,16 +154,6 @@ const clean = (v: unknown) => {
   return s || null
 }
 
-function safeUrl(v: unknown): string | null {
-  const s = clean(v)
-  if (!s) return null
-  try {
-    const u = new URL(s)
-    return u.protocol === 'https:' ? u.toString() : null
-  } catch {
-    return null
-  }
-}
 
 /** A stable, non-reversible id from the email, so the page never carries emails. */
 export async function instructorId(email: string): Promise<string> {
@@ -218,10 +205,6 @@ export async function buildInstructors(
     if (cols.years >= 0 && clean(row[cols.years]) && years === null) {
       warnings.push({ row: rowNumber, message: "Couldn't read years teaching, so it's left off" })
     }
-    const bookUrl = cols.bookUrl >= 0 ? safeUrl(row[cols.bookUrl]) : null
-    if (cols.bookUrl >= 0 && clean(row[cols.bookUrl]) && !bookUrl) {
-      warnings.push({ row: rowNumber, message: "The booking link isn't a valid https link" })
-    }
     people.push({
       id: await instructorId(email),
       first,
@@ -232,7 +215,6 @@ export async function buildInstructors(
       yearsLabel: yearsLabel(years),
       certification: cols.certification >= 0 ? clean(row[cols.certification]) : null,
       bio: cols.bio >= 0 ? clean(row[cols.bio]) : null,
-      bookUrl,
       photo: photos.get(email) ?? null,
     })
   }
@@ -247,6 +229,11 @@ export async function buildInstructors(
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
   return { instructors, warnings }
+}
+
+/** The filter chips worth offering: only specialties someone in the list has (owners, 29 Oct 2026). */
+export function offeredSpecialties(instructors: PublicInstructor[]): { key: SpecialtyKey; label: string }[] {
+  return SPECIALTIES.filter((s) => instructors.some((i) => i.specialties.includes(s.key))).map(({ key, label }) => ({ key, label }))
 }
 
 export function forLocation(instructors: PublicInstructor[], location: Location): PublicInstructor[] {

@@ -18,7 +18,6 @@ interface Instructor {
   yearsLabel: string | null
   certification: string | null
   bio: string | null
-  bookUrl: string | null
   photo: string | null
 }
 
@@ -30,6 +29,9 @@ interface Data {
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
+// The booking button scrolls down to the page's booking calendar, so its arrow points down.
+const DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-6-6l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>'
+
 const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 class FindYourPerson extends HTMLElement {
@@ -37,6 +39,7 @@ class FindYourPerson extends HTMLElement {
   private data: Data | null = null
   private filter: string | null = null
   private open = new Set<string>()
+  private toastTimer: ReturnType<typeof setTimeout> | undefined
 
   connectedCallback() {
     if (this.getAttribute('data-fonts') !== 'none') loadFonts(this.getAttribute('data-api') ?? '')
@@ -90,7 +93,7 @@ class FindYourPerson extends HTMLElement {
           ${i.certification ? `<p class="cert">${esc(i.certification)}</p>` : ''}
           ${i.bio ? `<p class="bio">${esc(i.bio)}</p>` : ''}
           ${facts.length || i.bio ? `<button class="more" type="button" aria-expanded="${isOpen}">${isOpen ? 'Less' : `More about ${esc(i.name)}`}</button>` : ''}
-          <button class="book" type="button" data-book="${esc(i.id)}">Book with ${esc(i.name)}</button>
+          <button class="book" type="button" data-book="${esc(i.id)}">Book with ${esc(i.name)}${DOWN}</button>
         </div>
       </article>`
     }
@@ -145,23 +148,20 @@ class FindYourPerson extends HTMLElement {
     this.root.querySelector<HTMLButtonElement>('.next')!.disabled = t.scrollLeft + t.clientWidth > t.scrollWidth - 4
   }
 
-  /** Their own Arketa availability when we have the link; otherwise the page's booking calendar. */
+  /**
+   * Arketa can't open one instructor's privates, so this scrolls to the page's booking calendar
+   * (owners, 29 Oct 2026) and says who to pick there.
+   */
   private book(i: Instructor) {
-    if (i.bookUrl) {
-      window.open(i.bookUrl, '_blank', 'noopener')
-      return
-    }
-    const calendar = document.querySelector('iframe[src*="arketa"]')
+    const calendar = document.querySelector('[data-craft-booking], iframe[src*="arketa"]')
+    calendar?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     const toast = this.root.querySelector('.toast') as HTMLElement
-    if (calendar) {
-      calendar.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      toast.textContent = `Choose ${i.name} in the booking calendar below.`
-    } else {
-      toast.textContent = `Choose ${i.name} when you book your private session.`
-    }
+    toast.textContent = `Choose ${i.name} in the booking calendar.`
     toast.classList.add('show')
-    setTimeout(() => toast.classList.remove('show'), 6000)
+    clearTimeout(this.toastTimer)
+    this.toastTimer = setTimeout(() => toast.classList.remove('show'), 5000)
   }
+
 }
 
 /** Once per page: the brand fonts from the Worker, and Epilogue from Google Fonts. */

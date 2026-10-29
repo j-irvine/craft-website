@@ -85,14 +85,14 @@ Open decisions from the brief. Each has a proposal; none are confirmed yet. Upda
 | Field mapping from the form's columns | See **Instructor sheet mapping** below. | Specialty rule confirmed (Oct 29); chip wording to review before launch |
 | Photo matching | Support both: filename by form email first, then a photo link column in the row. Pro shoot photos override both. | Confirmed (Oct 29) |
 | Short client-facing bio question | Yes, optional, 1–2 sentences, so cards aren't just tags. | Confirmed (Oct 29) |
-| Can Arketa filter privates by instructor? | Yes per Arketa's help center: each team member has a "Private availability" direct link and embed code (Staff → Team → ⋯ → Embed). "Book with [name]" can open that instructor's link, stored per instructor (e.g. a sheet column). Need to confirm the link covers privates and duets. Source: https://help.arketa.com/appointments/availability/share-calendar | Likely yes, to confirm |
+| Can Arketa filter privates by instructor? | Yes per Arketa's help center: each team member has a "Private availability" direct link and embed code (Staff → Team → ⋯ → Embed). "Book with [name]" can open that instructor's link, stored per instructor (e.g. a sheet column). Need to confirm the link covers privates and duets. Source: https://help.arketa.com/appointments/availability/share-calendar | Decided (Oct 29): "Book with [name]" only scrolls to the page's Arketa calendar and says to choose that instructor there. No per-instructor links. |
 | Does the Showit plan support custom embed code? | Owners are on "Showit Annual". Showit's public docs don't tie the Embed Code element to a plan; confirm by checking the editor's add-element menu shows "Embed Code" (or the existing Arketa schedule embed on the site already proves it). | Likely yes, to confirm |
 
 ## How it's built
 
 - `src/worker.ts`: the Cloudflare Worker. A cron every 5 minutes reads the sheet (`src/google.ts`, read-only service account), turns it into the client-safe list (`src/instructors.ts`) and stores it in KV (`DATA`), writing only when something changed (KV's free tier allows 1,000 writes a day).
 - `src/widget/`: the embed. A script tag (not an iframe) that puts a `<craft-find-your-person>` element where it sits, rendered in a shadow root so Showit's styles and ours don't collide. A script tag rather than an iframe so it can use the brand fonts the Showit page already loads, and scroll the page to the Arketa calendar. Fills its Showit box (`height: 100%`), and switches to the phone layout by the box's width (container query).
-- Look: follows the Mini Brand Book in Craft Apps (`brand/`): KK Topo names, Trio Grotesk Bold wide caps for chips, labels and the square chocolate CTA, Epilogue body, cream cards, mint tags, and the tertiary logo on forest as the no-photo placeholder. `data-theme` picks colors for the section it sits on (chocolate default, `cream`, `forest`). The first preview used pill buttons and a serif and read as off-brand (owners, Oct 29).
+- Look: follows the Mini Brand Book in Craft Apps (`brand/`): KK Topo names, Trio Grotesk Bold wide caps for chips, labels and the square chocolate CTA, Epilogue body, cream cards, mint tags, and the tertiary logo on forest as the no-photo placeholder. `data-theme` picks colors for the section it sits on: cream is the default and what the owners chose for the privates pages (Oct 29); `chocolate` and `forest` exist too. The first preview used pill buttons and a serif and read as off-brand (owners, Oct 29).
 - Fonts: the widget declares them on the page from the Worker's `/fonts/*.woff2`, served from KV (`scripts/upload-fonts.sh`), because Trio Grotesk's license keeps it out of this public repo. Epilogue comes from Google Fonts.
 - `preview/sample.json`: made-up instructors for previews. Real instructor data never goes in this repo.
 - Not built yet: photos (Drive folder → cropped copies served by the Worker), the Showit steps.
@@ -116,7 +116,7 @@ Sheet: the "Form Responses 1" tab of "Craft Pilates Instructor Questionnaire (Re
 
 **Never published:** equipment, "If you selected other", the three free-text answers about other conditions, additional training, and matching notes. These are staff-only.
 
-**Columns staff add to the sheet (right of the form columns):** Hide from website (checkbox), Arketa booking link (the instructor's private availability link), Photo link (only when the photo can't be matched by email).
+**Columns staff add to the sheet (right of the form columns):** Hide from website (checkbox), Photo link (only when the photo can't be matched by email).
 
 **Client areas → specialties.** Each of the 17 areas is a checkbox grid: Interested / Have taught a few / Have substantial experience / Completed relevant training / Have not taught yet. Rule (confirmed Oct 29): an instructor gets a specialty only with *substantial experience* or *completed training* in it ("interested" and "a few clients" don't count). Proposed grouping into 8 public chips so filters fit a fixed-height box:
 
@@ -129,4 +129,4 @@ Sheet: the "Form Responses 1" tab of "Craft Pilates Instructor Questionnaire (Re
 - Injury & surgery recovery — Returning after injury…; Shoulder, hip or knee injuries; Returning after surgery or joint replacement; Arthritis and other joint conditions; Hypermobility and joint stability
 - Neurological conditions — Neurological conditions affecting movement or balance
 
-Chip wording and the rule need the owners' OK before launch (they're public claims).
+Chip wording and the rule need the owners' OK before launch (they're public claims). A chip only shows when someone at that studio has it right now (owners, Oct 29; `offeredSpecialties`).

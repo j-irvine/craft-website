@@ -16,13 +16,13 @@ export const CSS = `
   --font-sub: 'Craft Trio Grotesk', 'Trio Grotesk', 'Epilogue', system-ui, sans-serif;
   --font-body: 'Epilogue', system-ui, sans-serif;
 
-  /* Chocolate section (default): cream text, cream cards. */
-  --text: var(--cream);
-  --muted: color-mix(in srgb, var(--cream) 72%, var(--chocolate));
-  --chip-line: color-mix(in srgb, var(--cream) 55%, transparent);
-  --chip-on-bg: var(--cream);
-  --chip-on-text: var(--chocolate);
-  --card: var(--cream);
+  /* Cream section (default; owners, 29 Oct 2026): chocolate text, cards a shade deeper so they read as panels. */
+  --text: var(--chocolate);
+  --muted: color-mix(in srgb, var(--chocolate) 70%, var(--cream));
+  --chip-line: color-mix(in srgb, var(--chocolate) 45%, transparent);
+  --chip-on-bg: var(--chocolate);
+  --chip-on-text: var(--cream);
+  --card: color-mix(in srgb, var(--chocolate) 7%, var(--cream));
   --card-text: var(--chocolate);
   --name: var(--terracotta);
   --years: var(--forest);
@@ -42,17 +42,20 @@ export const CSS = `
   color: var(--text);
   font-family: var(--font-body);
 }
-/* Cream section: chocolate text, cards a shade deeper so they still read as panels. */
-:host([data-theme='cream']) {
-  --text: var(--chocolate);
-  --muted: color-mix(in srgb, var(--chocolate) 70%, var(--cream));
-  --chip-line: color-mix(in srgb, var(--chocolate) 45%, transparent);
-  --chip-on-bg: var(--chocolate);
-  --chip-on-text: var(--cream);
-  --card: color-mix(in srgb, var(--chocolate) 7%, var(--cream));
+/* Chocolate section: cream text, cream cards. */
+:host([data-theme='chocolate']) {
+  --text: var(--cream);
+  --muted: color-mix(in srgb, var(--cream) 72%, var(--chocolate));
+  --chip-line: color-mix(in srgb, var(--cream) 55%, transparent);
+  --chip-on-bg: var(--cream);
+  --chip-on-text: var(--chocolate);
+  --card: var(--cream);
 }
 /* Forest section: cream text, cream cards, mint highlights. */
 :host([data-theme='forest']) {
+  --text: var(--cream);
+  --chip-line: color-mix(in srgb, var(--cream) 55%, transparent);
+  --card: var(--cream);
   --muted: color-mix(in srgb, var(--cream) 75%, var(--forest));
   --chip-on-bg: var(--mint);
   --chip-on-text: var(--forest);
@@ -116,6 +119,8 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
   background: var(--cta); color: var(--cream); padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   font: 700 11px/1 var(--font-sub); letter-spacing: .12em; text-transform: uppercase;
 }
+.book { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.book svg { flex: none; width: 14px; height: 14px; }
 .book:hover { background: var(--cta-hover); }
 
 /* "More about": the details take the card, the photo shrinks to a strip. */
@@ -126,7 +131,7 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .card.open .cert, .card.open .bio { display: block; -webkit-line-clamp: unset; }
 
 .toast {
-  position: absolute; left: 50%; bottom: 12px; transform: translate(-50%, 20px); opacity: 0;
+  position: fixed; z-index: 2147483000; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0;
   background: var(--forest); color: var(--cream); padding: 12px 16px;
   font: 14px/1.35 var(--font-body); transition: .25s; pointer-events: none; width: max-content; max-width: 90%; text-align: center;
 }

@@ -2,7 +2,7 @@
 // A cron re-reads the instructor sheet every 5 minutes and keeps the client-safe list in KV.
 
 import { WIDGET_JS } from './generated/widget'
-import { buildInstructors, forLocation, LOCATIONS, SPECIALTIES, type Location, type SheetResult } from './instructors'
+import { buildInstructors, forLocation, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
 import { previewPage } from './preview'
 
@@ -79,10 +79,11 @@ export default {
       const location = url.searchParams.get('location')
       if (!isLocation(location)) return json({ error: 'location must be park-slope or uws' })
       const stored = await env.DATA.get<Stored>('instructors', 'json')
+      const here = stored ? forLocation(stored.instructors, location) : []
       return json({
         location: LOCATIONS[location],
-        specialties: SPECIALTIES.map(({ key, label }) => ({ key, label })),
-        instructors: stored ? forLocation(stored.instructors, location).map(({ locations: _, ...i }) => i) : [],
+        specialties: offeredSpecialties(here),
+        instructors: here.map(({ locations: _, ...i }) => i),
       })
     }
 

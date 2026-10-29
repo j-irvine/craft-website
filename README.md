@@ -10,7 +10,7 @@ The instructor directory for the two privates pages.
 <script src="https://<worker address>/find-your-person.js" data-location="park-slope"></script>
 ```
 
-`data-location` is `park-slope` or `uws`. `data-theme` matches the section the embed sits on: leave it out for chocolate, or use `cream` or `forest`.
+`data-location` is `park-slope` or `uws`. `data-theme` matches the section the embed sits on: leave it out for cream (the privates pages), or use `chocolate` or `forest`.
 
 ## Run it
 

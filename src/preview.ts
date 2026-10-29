@@ -4,8 +4,8 @@
 import type { Location } from './instructors'
 
 const THEMES = [
-  { key: 'chocolate', label: 'Chocolate', bg: '#352222', fg: '#ffe5c8', attr: '' },
-  { key: 'cream', label: 'Cream', bg: '#ffe5c8', fg: '#352222', attr: 'cream' },
+  { key: 'cream', label: 'Cream', bg: '#ffe5c8', fg: '#352222', attr: '' },
+  { key: 'chocolate', label: 'Chocolate', bg: '#352222', fg: '#ffe5c8', attr: 'chocolate' },
   { key: 'forest', label: 'Forest', bg: '#485c3d', fg: '#ffe5c8', attr: 'forest' },
 ]
 
@@ -20,7 +20,7 @@ export function previewPage(location: Location, origin: string, scriptTag?: (loc
 <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700&display=swap" rel="stylesheet">
 ${head}
 <style>
-  :root { --bg: #352222; --fg: #ffe5c8; }
+  :root { --bg: #ffe5c8; --fg: #352222; }
   body { margin: 0; background: var(--bg); color: var(--fg); font-family: Epilogue, system-ui, sans-serif; transition: background .2s; }
   header, section { max-width: 1100px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   header { padding-block: 28px 4px; }
@@ -37,6 +37,7 @@ ${head}
   .desktop { height: 600px; max-width: 1000px; }
   .phone-wrap { width: 360px; max-width: 100%; box-sizing: border-box; border: 10px solid #1d1313; border-radius: 28px; padding: 18px 16px 22px; }
   .phone { height: 620px; }
+  .calendar { height: 360px; max-width: 1000px; display: grid; place-items: center; border: 1px dashed color-mix(in srgb, var(--fg) 45%, transparent); opacity: .7; }
   @media (max-width: 760px) { .desktop-section { display: none; } }
 </style>
 </head><body>
@@ -49,6 +50,7 @@ ${head}
   </div>
 </header>
 <section class="desktop-section"><p class="label">Desktop · 1000 × 600 box</p><div class="box desktop">${tag(location)}</div></section>
+<section><p class="label">The page's Arketa booking calendar sits here</p><div class="calendar" data-craft-booking>Booking calendar</div></section>
 <section><p class="label">Phone · 328 × 620 box</p><div class="phone-wrap"><div class="box phone">${tag(location)}</div></div></section>
 <script>
   document.querySelectorAll('.themes button').forEach((b) => b.addEventListener('click', () => {
