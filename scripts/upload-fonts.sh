@@ -1,7 +1,7 @@
 #!/bin/sh
-# Uploads the brand's web fonts to the Worker's KV, once. Trio Grotesk is licensed, so the fonts
-# never go in this public repo. Usage: scripts/upload-fonts.sh <Craft Apps checkout>/brand/fonts/Type
+# Uploads the brand fonts to the Worker's KV by hand. The deploy workflow does this on every deploy
+# (KK Topo from fonts/, Trio Grotesk from the TRIO_GROTESK_WOFF2_BASE64 secret, as it's licensed).
+# Usage: scripts/upload-fonts.sh <path to TrioGrotesk-Bold.woff2>
 set -e
-dir="$1"
-npx wrangler@4 kv key put --binding DATA --remote font:kk-topo --path "$dir/KK-Topo/KK-Topo-Regular.woff2"
-npx wrangler@4 kv key put --binding DATA --remote font:trio-grotesk-bold --path "$dir/Trio Grotesk/Web/TrioGrotesk-Bold.woff2"
+npx wrangler@4 kv key put --binding DATA --remote font:kk-topo --path fonts/kk-topo.woff2
+npx wrangler@4 kv key put --binding DATA --remote font:trio-grotesk-bold --path "$1"

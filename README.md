@@ -24,12 +24,8 @@ npm run dev         # local Worker (needs .dev.vars with GOOGLE_SERVICE_ACCOUNT 
 
 The Worker's pages: `/find-your-person.js` (the embed), `/api/instructors?location=park-slope`, `/api/status` (last update, how many shown, rows staff should fix), `/preview?location=uws` (the directory in Showit-sized boxes, with live data).
 
-## Set up (once)
+## Deploy
 
-1. A Google Cloud service account with the Sheets and Drive APIs enabled. Share the responses sheet (and later the photos folder) with its email as **Viewer**.
-2. `npx wrangler@4 kv namespace create DATA` and paste the id into `wrangler.jsonc`.
-3. `npx wrangler@4 secret put GOOGLE_SERVICE_ACCOUNT` (the key JSON), `npx wrangler@4 secret put SHEET_ID` (from the sheet's URL) and `npx wrangler@4 secret put PHOTOS_FOLDER_ID` (from the website-photos folder's URL; share the folder with the service account too). Photos are named by the instructor's form email (`ana@example.com.jpg`); shoot photos go in a `Professional` subfolder and win.
-4. `scripts/upload-fonts.sh <studio-app>/brand/fonts/Type` (the brand fonts live in KV, not this repo: Trio Grotesk is licensed).
-5. `npm run deploy`.
+Merging to `main` deploys the Worker (`.github/workflows/deploy.yml`) to https://craft-website.craftpilates.workers.dev. The live site only changes where Showit embeds it. The workflow reads its settings from the repository's Actions secrets, listed at the top of that file. KV and the fonts are set up by the workflow; KK Topo (OFL) is in `fonts/`, while Trio Grotesk is licensed and comes from a secret (a Latin subset, base64).
 
 Never commit keys or instructor data: this repo is public.
