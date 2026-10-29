@@ -82,7 +82,7 @@ Open decisions from the brief. Each has a proposal; none are confirmed yet. Upda
 | --- | --- | --- |
 | Where to host the components | Cloudflare Workers, same as Craft Apps (`studio-app` deploys with Wrangler and already signs in to Google with a service account in `worker/push.ts`). A Worker serves the embed script/iframe, a JSON API, and photos (R2). | Confirmed (Oct 29) |
 | How data refreshes; how fast a hidden instructor disappears | A cron in the Worker reads the sheet every 5 minutes and caches the cleaned, client-safe list. Hiding takes effect within about 5 minutes. Owners: fine if it's free; speed isn't important. | Confirmed (Oct 29) |
-| Field mapping from the form's columns | See **Instructor sheet mapping** below. | Proposed, specialty rule open |
+| Field mapping from the form's columns | See **Instructor sheet mapping** below. | Specialty rule confirmed (Oct 29); chip wording to review before launch |
 | Photo matching | Support both: filename by form email first, then a photo link column in the row. Pro shoot photos override both. | Confirmed (Oct 29) |
 | Short client-facing bio question | Yes, optional, 1–2 sentences, so cards aren't just tags. | Confirmed (Oct 29) |
 | Can Arketa filter privates by instructor? | Yes per Arketa's help center: each team member has a "Private availability" direct link and embed code (Staff → Team → ⋯ → Embed). "Book with [name]" can open that instructor's link, stored per instructor (e.g. a sheet column). Need to confirm the link covers privates and duets. Source: https://help.arketa.com/appointments/availability/share-calendar | Likely yes, to confirm |
@@ -109,7 +109,7 @@ Sheet: the "Form Responses 1" tab of "Craft Pilates Instructor Questionnaire (Re
 
 **Columns staff add to the sheet (right of the form columns):** Hide from website (checkbox), Arketa booking link (the instructor's private availability link), Photo link (only when the photo can't be matched by email).
 
-**Client areas → specialties.** Each of the 17 areas is a checkbox grid: Interested / Have taught a few / Have substantial experience / Completed relevant training / Have not taught yet. Proposed rule: an instructor gets a specialty only with *substantial experience* or *completed training* in it ("interested" and "a few clients" don't count). Proposed grouping into 8 public chips so filters fit a fixed-height box:
+**Client areas → specialties.** Each of the 17 areas is a checkbox grid: Interested / Have taught a few / Have substantial experience / Completed relevant training / Have not taught yet. Rule (confirmed Oct 29): an instructor gets a specialty only with *substantial experience* or *completed training* in it ("interested" and "a few clients" don't count). Proposed grouping into 8 public chips so filters fit a fixed-height box:
 
 - Beginners — Beginners or returning after a break
 - Strength & athletic — Strength and athletic performance
