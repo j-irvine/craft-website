@@ -88,6 +88,13 @@ Open decisions from the brief. Each has a proposal; none are confirmed yet. Upda
 | Can Arketa filter privates by instructor? | Yes per Arketa's help center: each team member has a "Private availability" direct link and embed code (Staff → Team → ⋯ → Embed). "Book with [name]" can open that instructor's link, stored per instructor (e.g. a sheet column). Need to confirm the link covers privates and duets. Source: https://help.arketa.com/appointments/availability/share-calendar | Likely yes, to confirm |
 | Does the Showit plan support custom embed code? | Owners are on "Showit Annual". Showit's public docs don't tie the Embed Code element to a plan; confirm by checking the editor's add-element menu shows "Embed Code" (or the existing Arketa schedule embed on the site already proves it). | Likely yes, to confirm |
 
+## How it's built
+
+- `src/worker.ts`: the Cloudflare Worker. A cron every 5 minutes reads the sheet (`src/google.ts`, read-only service account), turns it into the client-safe list (`src/instructors.ts`) and stores it in KV (`DATA`), writing only when something changed (KV's free tier allows 1,000 writes a day).
+- `src/widget/`: the embed. A script tag (not an iframe) that puts a `<craft-find-your-person>` element where it sits, rendered in a shadow root so Showit's styles and ours don't collide. A script tag rather than an iframe so it can use the brand fonts the Showit page already loads, and scroll the page to the Arketa calendar. Fills its Showit box (`height: 100%`), and switches to the phone layout by the box's width (container query).
+- `preview/sample.json`: made-up instructors for previews. Real instructor data never goes in this repo.
+- Not built yet: photos (Drive folder → cropped copies served by the Worker), the Showit steps.
+
 ## Instructor sheet mapping
 
 Sheet: the "Form Responses 1" tab of "Craft Pilates Instructor Questionnaire (Responses)" (28 responses on Oct 29, 2026; 21 said yes to privates). Column headers are matched by their text, not position, so reordering or adding columns doesn't break anything.
