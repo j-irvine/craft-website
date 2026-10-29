@@ -85,5 +85,5 @@ Open decisions from the brief. Each has a proposal; none are confirmed yet. Upda
 | Field mapping from the form's columns | Needs the sheet. | Waiting on sheet |
 | Photo matching | Support both: filename by form email first, then a photo link column in the row. Pro shoot photos override both. | Proposed |
 | Short client-facing bio question | Yes, optional, 1–2 sentences, so cards aren't just tags. | Proposed |
-| Can Arketa filter privates by instructor? | Not yet checked. | Open |
+| Can Arketa filter privates by instructor? | Yes per Arketa's help center: each team member has a "Private availability" direct link and embed code (Staff → Team → ⋯ → Embed). "Book with [name]" can open that instructor's link, stored per instructor (e.g. a sheet column). Need to confirm the link covers privates and duets. Source: https://help.arketa.com/appointments/availability/share-calendar | Likely yes, to confirm |
 | Does the Showit plan support custom embed code? | Needs a check of the Showit account. | Open |
