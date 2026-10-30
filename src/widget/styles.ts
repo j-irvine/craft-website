@@ -92,18 +92,23 @@ export const CSS = `
   flex: 0 0 264px; scroll-snap-align: start; display: flex; flex-direction: column;
   background: var(--card); color: var(--card-text); border-radius: 0; overflow: hidden;
 }
-.photo { flex: 0 0 36%; min-height: 120px; position: relative; background: var(--photo-bg); }
+.photo { flex: 1 1 auto; min-height: 120px; position: relative; background: var(--photo-bg); }
 .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
 /* The socks shot: keep the socks in view however the card crops it. */
 .photo img.placeholder { object-position: 60% 4%; }
-/* Photos are one height on every card so names line up; the body below holds every tag (owners, Oct 30)
-   and scrolls in the rare card with more than fits. */
-.body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
+/* Every closed card's body is one height, so photos and names line up and nothing scrolls inside it:
+   up to 3 lines of tags, then "+N more" (owners, Oct 30: cards sized to all their tags looked odd). */
+.body { flex: none; height: 268px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
 h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .years { margin: 0; font: 700 10px/1.2 var(--font-sub); letter-spacing: .14em; text-transform: uppercase; color: var(--years); }
-.tags { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.tags { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; max-height: 74px; overflow: hidden; }
 .tags li { font: 12px/1 var(--font-body); padding: 5px 7px; background: var(--tag); color: var(--chocolate); }
+.tags li[hidden] { display: none; }
 .tags li.on { background: var(--tag-on); color: var(--cream); }
+.tags li.tags-toggle { padding: 0; background: none; }
+.tags-toggle button { font: 12px/1 var(--font-body); padding: 4px 6px; border: 1px solid currentColor; background: none;
+  color: var(--card-text); cursor: pointer; }
+.tags-toggle button:hover { background: var(--tag); }
 /* Bio and certification only show under "More about". */
 .bio { margin: 0; font: 13px/1.4 var(--font-body); display: none; }
 .cert { display: none; }
@@ -123,8 +128,11 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .book svg { flex: none; width: 14px; height: 14px; }
 .book:hover { background: var(--cta-hover); }
 
-/* "More about": the details take the card, the photo shrinks to a strip. */
-.card.open .photo { flex: 0 0 64px; min-height: 64px; }
+/* "More about" and "+N more": the details take the card and the photo shrinks to a strip. Only a card
+   with more than even that holds scrolls. */
+.card.open .photo, .card.all-tags .photo { flex: 0 0 64px; min-height: 64px; }
+.card.open .body, .card.all-tags .body { flex: 1 1 auto; height: auto; min-height: 0; overflow-y: auto; }
+.card.open .tags, .card.all-tags .tags { max-height: none; }
 .card.open .cert, .card.open .bio { display: block; }
 
 .toast {
