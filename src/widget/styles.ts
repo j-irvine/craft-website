@@ -92,27 +92,30 @@ export const CSS = `
   flex: 0 0 264px; scroll-snap-align: start; display: flex; flex-direction: column;
   background: var(--card); color: var(--card-text); border-radius: 0; overflow: hidden;
 }
-.photo { flex: 1 1 auto; min-height: 120px; position: relative; background: var(--photo-bg); }
+.photo { flex: 0 0 36%; min-height: 120px; position: relative; background: var(--photo-bg); }
 .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
 /* The socks shot: keep the socks in view however the card crops it. */
 .photo img.placeholder { object-position: 60% 4%; }
-.body { flex: none; height: 252px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
+/* Photos are one height on every card so names line up; the body below holds every tag (owners, Oct 30)
+   and scrolls in the rare card with more than fits. */
+.body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
 h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .years { margin: 0; font: 700 10px/1.2 var(--font-sub); letter-spacing: .14em; text-transform: uppercase; color: var(--years); }
-.tags { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px;
-  max-height: 48px; overflow: hidden; }
+.tags { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .tags li { font: 12px/1 var(--font-body); padding: 5px 7px; background: var(--tag); color: var(--chocolate); }
 .tags li.on { background: var(--tag-on); color: var(--cream); }
-.cert, .bio { margin: 0; font: 13px/1.4 var(--font-body);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.bio { display: none; }
+/* Bio and certification only show under "More about". */
+.bio { margin: 0; font: 13px/1.4 var(--font-body); display: none; }
+.cert { display: none; }
+.cert p { margin: 0; font: 13px/1.4 var(--font-body); }
+.cert .label { margin: 4px 0 2px; font: 700 10px/1.2 var(--font-sub); letter-spacing: .14em; text-transform: uppercase; color: var(--years); }
 .more { align-self: flex-start; background: none; border: 0; padding: 2px 0; cursor: pointer; color: inherit; opacity: .75;
   font: 12px/1.2 var(--font-body); text-decoration: underline; text-underline-offset: 3px; }
 .more:hover { opacity: 1; }
 .book {
   margin-top: auto; min-height: 44px; border: 0; border-radius: 0; cursor: pointer;
   background: var(--cta); color: var(--cream); padding: 6px 12px;
-  font: 700 11px/1.25 var(--font-sub); letter-spacing: .12em; text-transform: uppercase;
+  font: 700 11px/1.25 var(--font-sub); letter-spacing: .1em; text-transform: uppercase;
   display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 /* A long name wraps onto a second line, centred, instead of running out of the button. */
@@ -122,9 +125,7 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 
 /* "More about": the details take the card, the photo shrinks to a strip. */
 .card.open .photo { flex: 0 0 64px; min-height: 64px; }
-.card.open .body { flex: 1 1 auto; height: auto; min-height: 0; overflow-y: auto; }
-.card.open .tags { max-height: none; }
-.card.open .cert, .card.open .bio { display: block; -webkit-line-clamp: unset; }
+.card.open .cert, .card.open .bio { display: block; }
 
 .toast {
   position: fixed; z-index: 2147483000; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0;

@@ -81,7 +81,6 @@ class FindYourPerson extends HTMLElement {
       const tags = i.specialties
         .map((k) => `<li class="${k === this.filter ? 'on' : ''}">${esc(labels.get(k) ?? k)}</li>`)
         .join('')
-      const facts = [i.yearsLabel, i.certification].filter(Boolean) as string[]
       const isOpen = this.open.has(i.id)
       return `<article class="card${isOpen ? ' open' : ''}" data-id="${esc(i.id)}">
         <div class="photo">${photo}</div>
@@ -89,9 +88,9 @@ class FindYourPerson extends HTMLElement {
           <h3>${esc(i.name)}</h3>
           ${i.yearsLabel ? `<p class="years">${esc(i.yearsLabel)}</p>` : ''}
           ${tags ? `<ul class="tags">${tags}</ul>` : ''}
-          ${i.certification ? `<p class="cert">${esc(i.certification)}</p>` : ''}
           ${i.bio ? `<p class="bio">${esc(i.bio)}</p>` : ''}
-          ${facts.length || i.bio ? `<button class="more" type="button" aria-expanded="${isOpen}">${isOpen ? 'Less' : `More about ${esc(i.name)}`}</button>` : ''}
+          ${i.certification ? `<div class="cert"><p class="label">Certification</p><p>${esc(i.certification)}</p></div>` : ''}
+          ${i.certification || i.bio ? `<button class="more" type="button" aria-expanded="${isOpen}">${isOpen ? 'Less' : `More about ${esc(i.name)}`}</button>` : ''}
           <button class="book" type="button" data-book="${esc(i.id)}"><span>Book with ${esc(i.name)}</span>${DOWN}</button>
         </div>
       </article>`
