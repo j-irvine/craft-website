@@ -93,10 +93,11 @@ describe('parseYears', () => {
 })
 
 describe('yearsLabel', () => {
-  it('words years for the card', () => {
-    expect(yearsLabel(0.5)).toBe('Less than a year teaching')
-    expect(yearsLabel(1)).toBe('1 year teaching')
-    expect(yearsLabel(2.5)).toBe('2+ years teaching')
+  it('words years for the card, from 3 years', () => {
+    expect(yearsLabel(0.5)).toBeNull()
+    expect(yearsLabel(2.5)).toBeNull()
+    expect(yearsLabel(3)).toBe('3 years teaching')
+    expect(yearsLabel(3.5)).toBe('3+ years teaching')
     expect(yearsLabel(10)).toBe('10 years teaching')
   })
 })

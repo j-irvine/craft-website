@@ -109,8 +109,8 @@ Sheet: the "Form Responses 1" tab of "Craft Pilates Instructor Questionnaire (Re
 | Form column | On the website |
 | --- | --- |
 | Your name | First name, with last initial only if two instructors share a first name (same rule as the studio app) |
-| How many years have you taught Pilates? | "N years teaching". Answers are free text ("2.5", "Two years", "<1", "10 yrs"), so the number is parsed; anything unparseable is left off the card and reported to staff |
-| Where did you complete your Pilates certification? | Shown as written. Answers run up to ~150 characters, so the card shows a short line and expands on tap |
+| How many years have you taught Pilates? | "N years teaching", only from 3 years (owners, Oct 30: less is left off). Answers are free text ("2.5", "Two years", "<1", "10 yrs"), so the number is parsed; anything unparseable is left off the card and reported to staff |
+| Where did you complete your Pilates certification? | Shown as written under a "Certification" label, only under "More about [name]" (owners, Oct 30: a bare studio name on the card was confusing) |
 | For each client area… [17 areas] | Specialty tags and filter chips (rule and grouping below) |
 | *New:* location for privates (form question) | Which privates page they appear on (Park Slope, UWS, or both) |
 | *New:* short bio (optional form question) | 1–2 sentence bio on the card |
@@ -132,4 +132,4 @@ Sheet: the "Form Responses 1" tab of "Craft Pilates Instructor Questionnaire (Re
 - Injury & surgery recovery — Returning after injury…; Shoulder, hip or knee injuries; Returning after surgery or joint replacement; Arthritis and other joint conditions; Hypermobility and joint stability
 - Neurological conditions — Neurological conditions affecting movement or balance
 
-Chip wording and the rule need the owners' OK before launch (they're public claims). A chip only shows when someone at that studio has it right now (owners, Oct 29; `offeredSpecialties`).
+Cards show every tag the instructor has (owners, Oct 30: only seeing the first few was confusing); photos are one height on every card so names line up. Chip wording and the rule need the owners' OK before launch (they're public claims). A chip only shows when someone at that studio has it right now (owners, Oct 29; `offeredSpecialties`).

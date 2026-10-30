@@ -120,9 +120,11 @@ export function parseYears(raw: unknown): number | null {
   return null
 }
 
+/** Below this, years teaching are left off the card (owners, Oct 30). */
+export const MIN_YEARS_SHOWN = 3
+
 export function yearsLabel(years: number | null): string | null {
-  if (years === null) return null
-  if (years < 1) return 'Less than a year teaching'
+  if (years === null || years < MIN_YEARS_SHOWN) return null
   const whole = Math.floor(years)
   const unit = whole === 1 ? 'year' : 'years'
   return whole === years ? `${whole} ${unit} teaching` : `${whole}+ ${unit} teaching`
