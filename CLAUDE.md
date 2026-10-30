@@ -119,7 +119,7 @@ Sheet: the "Form Responses 1" tab of "Craft Pilates Instructor Questionnaire (Re
 
 **Never published:** equipment, "If you selected other", the three free-text answers about other conditions, additional training, and matching notes. These are staff-only.
 
-**Columns staff add to the sheet (right of the form columns):** Hide from website (checkbox), Photo link (only when the photo can't be matched by email), Arketa booking link (the instructor's "Private availability" link or embed code from Arketa: Staff → Team → ⋯ → Embed; until it's there, Book opens the studio's page).
+**Columns staff add to the sheet (right of the form columns):** Hide from website (checkbox), Photo link (only when the photo can't be matched by email), Arketa booking link (optional, only for someone the site can't match: instructors are matched to Arketa automatically by the name its booking pages show, full name or first name with or without the last initial, unique on both sides; owners, Oct 30: no links to paste. `/api/status` warns about anyone unmatched, whose Book opens the studio's page).
 
 **Client areas → specialties.** Each of the 17 areas is a checkbox grid: Interested / Have taught a few / Have substantial experience / Completed relevant training / Have not taught yet. Rule (confirmed Oct 29): an instructor gets a specialty only with *substantial experience* or *completed training* in it ("interested" and "a few clients" don't count). Proposed grouping into 8 public chips so filters fit a fixed-height box:
 

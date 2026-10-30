@@ -10,17 +10,22 @@ const WIDGET_API = 'https://widget-api-tkaeguucxq-uc.a.run.app/4l7q5eYxQYfsO5lsk
 /** Arketa service id to the instructor ("host") ids that offer it. */
 export type ServiceHosts = Record<string, string[]>
 
+/** Arketa instructor id to the name its booking pages show ("Abby", "Sarah K"), for matching them to the sheet. */
+export type HostNames = Record<string, string>
+
 /** One service's instructors, or null when the reply isn't what we expect. */
-export function hostsFromReply(body: unknown): string[] | null {
+export function hostsFromReply(body: unknown): { id: string; name: string | null }[] | null {
   const instructors = (body as { instructors?: unknown } | null)?.instructors
   if (!Array.isArray(instructors)) return null
-  const ids = instructors.map((i) => (i as { id?: unknown })?.id).filter((id): id is string => typeof id === 'string')
-  return ids.length === instructors.length ? ids : null
+  const found = instructors.map((i) => i as { id?: unknown; name?: unknown })
+  if (!found.every((i) => typeof i?.id === 'string')) return null
+  return found.map((i) => ({ id: i.id as string, name: typeof i.name === 'string' ? i.name : null }))
 }
 
-/** Every privates service's instructors. Services that fail are left out. */
-export async function fetchServiceHosts(fetcher: typeof fetch = fetch): Promise<{ hosts: ServiceHosts; errors: string[] }> {
+/** Every privates service's instructors, and their names. Services that fail are left out. */
+export async function fetchServiceHosts(fetcher: typeof fetch = fetch): Promise<{ hosts: ServiceHosts; names: HostNames; errors: string[] }> {
   const hosts: ServiceHosts = {}
+  const names: HostNames = {}
   const errors: string[] = []
   const ids = Object.values(ARKETA_SERVICES).flatMap((s) => Object.values(s))
   await Promise.all(
@@ -30,13 +35,14 @@ export async function fetchServiceHosts(fetcher: typeof fetch = fetch): Promise<
         if (!res.ok) throw new Error(String(res.status))
         const found = hostsFromReply(await res.json())
         if (!found) throw new Error('unexpected reply')
-        hosts[id] = found
+        hosts[id] = found.map((h) => h.id)
+        for (const h of found) if (h.name) names[h.id] = h.name
       } catch (e) {
         errors.push(`Arketa instructors for service ${id}: ${String(e)}`)
       }
     }),
   )
-  return { hosts, errors }
+  return { hosts, names, errors }
 }
 
 /**

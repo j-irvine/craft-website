@@ -299,6 +299,7 @@ export function driveFileId(link: unknown): string | null {
 export async function buildInstructors(
   rows: unknown[][],
   photos: Map<string, string> = new Map(),
+  arketaNames: Record<string, string> = {},
 ): Promise<SheetResult> {
   const [header, ...body] = rows
   const cols = findColumns((header ?? []).map(String))
@@ -310,7 +311,7 @@ export async function buildInstructors(
 
   const latest = latestByEmail(body, cols)
 
-  const people: (PublicInstructor & { first: string; last: string })[] = []
+  const people: (PublicInstructor & { first: string; last: string; rowNumber: number })[] = []
   for (const [email, { row, rowNumber }] of latest) {
     if (cols.hide >= 0 && isChecked(row[cols.hide])) continue
     if (String(row[cols.privates] ?? '').trim().toLowerCase() !== 'yes') continue
@@ -343,19 +344,52 @@ export async function buildInstructors(
       bio: cols.bio >= 0 ? clean(row[cols.bio]) : null,
       photo: photos.get(email) ?? null,
       arketaHost,
+      rowNumber,
     })
+  }
+
+  // Everyone without a link in the sheet is matched to Arketa by name (owners, Oct 30: no links to paste).
+  for (const p of people) {
+    if (p.arketaHost) continue
+    p.arketaHost = matchArketaHost(p, people, arketaNames)
+    if (!p.arketaHost && Object.keys(arketaNames).length) {
+      warnings.push({ row: p.rowNumber, message: "No instructor with this name on Arketa's privates, so Book opens the studio's calendar. Paste their Arketa link to fix it" })
+    }
   }
 
   // First names, with the last initial when two share a first name (as in the studio app).
   const counts = new Map<string, number>()
   for (const p of people) counts.set(p.first.toLowerCase(), (counts.get(p.first.toLowerCase()) ?? 0) + 1)
   const instructors = people
-    .map(({ first, last, ...p }) => ({
+    .map(({ first, last, rowNumber: _, ...p }) => ({
       ...p,
       name: (counts.get(first.toLowerCase()) ?? 0) > 1 && last ? `${first} ${last[0].toUpperCase()}` : first,
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
   return { instructors, warnings }
+}
+
+/**
+ * The Arketa instructor for someone in the sheet, by the name Arketa's booking pages show: their full name,
+ * or their first name with or without the last initial ("Sarah K", "Abby"). Only a match that's unique on
+ * both sides counts: a first name two sheet instructors share needs the initial, and a name two Arketa
+ * instructors share matches nobody.
+ */
+export function matchArketaHost(
+  person: { first: string; last: string },
+  people: { first: string }[],
+  arketaNames: Record<string, string>,
+): string | null {
+  const full = nameKey(`${person.first} ${person.last}`)
+  const initial = person.last ? nameKey(`${person.first} ${person.last[0]}`) : null
+  const first = nameKey(person.first)
+  const sharedFirst = people.filter((p) => nameKey(p.first) === first).length > 1
+  const ids = (test: (key: string) => boolean) => Object.entries(arketaNames).filter(([, n]) => test(nameKey(n))).map(([id]) => id)
+  for (const found of [ids((k) => k === full), initial ? ids((k) => k === initial) : [], sharedFirst ? [] : ids((k) => k === first)]) {
+    if (found.length === 1) return found[0]
+    if (found.length > 1) return null
+  }
+  return null
 }
 
 /** The filter chips worth offering: only specialties someone in the list has (owners, 29 Oct 2026). */
