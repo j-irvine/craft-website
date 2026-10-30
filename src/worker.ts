@@ -2,7 +2,7 @@
 // A cron re-reads the instructor sheet every 5 minutes and keeps the client-safe list in KV.
 
 import { WIDGET_JS } from './generated/widget'
-import { buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
+import { arketaBookingUrl, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
 import { syncPhotos, type PhotoCounts } from './photos'
 import { previewPage } from './preview'
@@ -124,7 +124,9 @@ export default {
       return json({
         location: LOCATIONS[location],
         specialties: offeredSpecialties(here),
-        instructors: here.map(({ locations: _, ...i }) => i),
+        // Booking any instructor at this studio, and each instructor's own times here.
+        booking: arketaBookingUrl(location, null),
+        instructors: here.map(({ locations: _, arketaHost, ...i }) => ({ ...i, booking: arketaHost ? arketaBookingUrl(location, arketaHost) : null })),
       })
     }
 
@@ -146,7 +148,7 @@ export default {
 
     if (url.pathname === '/preview') {
       const location = url.searchParams.get('location')
-      return new Response(previewPage(isLocation(location) ? location : 'park-slope', url.origin), {
+      return new Response(previewPage(isLocation(location) ? location : 'park-slope', url.origin, undefined, '', url.searchParams.get('booking') === 'panel'), {
         headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex' },
       })
     }

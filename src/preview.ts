@@ -9,8 +9,10 @@ const THEMES = [
   { key: 'forest', label: 'Forest', bg: '#485c3d', fg: '#ffe5c8', attr: 'forest' },
 ]
 
-export function previewPage(location: Location, origin: string, scriptTag?: (location: Location) => string, head = ''): string {
-  const tag = scriptTag ?? ((l: Location) => `<script src="${origin}/find-your-person.js" data-location="${l}"></script>`)
+/** `panel`: "Book with" opens the instructor's booking over the page, and there's no Arketa calendar below. */
+export function previewPage(location: Location, origin: string, scriptTag?: (location: Location) => string, head = '', panel = false): string {
+  const booking = panel ? ' data-booking="panel"' : ''
+  const tag = scriptTag ?? ((l: Location) => `<script src="${origin}/find-your-person.js" data-location="${l}"${booking}></script>`)
   const other: Location = location === 'park-slope' ? 'uws' : 'park-slope'
   const name = location === 'park-slope' ? 'Park Slope' : 'Upper West Side'
   return `<!doctype html>
@@ -43,15 +45,16 @@ ${head}
 </head><body>
 <header>
   <h1>Find Your Person · ${name}</h1>
-  <p>The instructor directory as it would sit on the privates page, with made-up instructors. The dashed outline is the Showit embed box.${scriptTag ? '' : ` <a href="?location=${other}">Switch studio</a>.`}</p>
+  <p>The instructor directory as it would sit on the privates page, with made-up instructors. The dashed outline is the Showit embed box.${scriptTag ? '' : ` <a href="?location=${other}${panel ? '&booking=panel' : ''}">Switch studio</a>.`}</p>
+  ${panel ? '<p>"Book with" opens that instructor\'s privates and duets at this studio, from our booking site. Booking there is real, so stop before paying.</p>' : ''}
   <div class="themes" role="group" aria-label="Section color">
     <span class="label" style="margin:0 6px 0 0">Section color</span>
     ${THEMES.map((t, i) => `<button type="button" data-theme="${t.attr}" data-bg="${t.bg}" data-fg="${t.fg}" aria-pressed="${i === 0}">${t.label}</button>`).join('')}
   </div>
 </header>
 <section class="desktop-section"><p class="label">Desktop · 1000 × 600 box</p><div class="box desktop">${tag(location)}</div></section>
-<section><p class="label">The page's Arketa booking calendar sits here</p><div class="calendar" data-craft-booking>Booking calendar</div></section>
-<section><p class="label">Phone · 328 × 620 box</p><div class="phone-wrap"><div class="box phone">${tag(location)}</div></div></section>
+${panel ? '' : `<section><p class="label">The page's Arketa booking calendar sits here</p><div class="calendar" data-craft-booking>Booking calendar</div></section>
+`}<section><p class="label">Phone · 328 × 620 box</p><div class="phone-wrap"><div class="box phone">${tag(location)}</div></div></section>
 <script>
   document.querySelectorAll('.themes button').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.themes button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))

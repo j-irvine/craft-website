@@ -6,6 +6,27 @@ export type Location = 'park-slope' | 'uws'
 
 export const LOCATIONS: Record<Location, string> = { 'park-slope': 'Park Slope', uws: 'Upper West Side' }
 
+/** Arketa's id for each studio, which narrows its privates booking page to that studio's Private and Duet sessions. */
+export const ARKETA_LOCATIONS: Record<Location, string> = { 'park-slope': '67ptpiCjvCsriKuEdItN', uws: 'N80JtYm27xFQhqhv8wam' }
+
+/**
+ * Arketa's privates booking page for one studio: the client picks Private or Duet, then a time.
+ * With an instructor (Arketa's "host" id) it shows only their times; without, the client picks an instructor there.
+ * Checked live on 30 Oct 2026. Adding a service id instead (by-service/<id>?host=) drops the instructor.
+ */
+export function arketaBookingUrl(location: Location, host: string | null): string {
+  const q = new URLSearchParams({ ...(host ? { host } : {}), location: ARKETA_LOCATIONS[location] })
+  return `https://app.arketa.co/iframe/craftpilates/privates/by-service?${q}`
+}
+
+/** The instructor's Arketa id from what staff paste: the "Private availability" link, its embed code, or the bare id. */
+export function arketaHostId(raw: unknown): string | null {
+  const s = String(raw ?? '').trim()
+  if (!s) return null
+  const m = /[?&]host=([A-Za-z0-9]{10,40})\b/.exec(s) ?? /^([A-Za-z0-9]{20,40})$/.exec(s)
+  return m ? m[1] : null
+}
+
 /** The public filter chips, in display order, and the form's client areas each one covers. */
 export const SPECIALTIES = [
   { key: 'beginners', label: 'Beginners', areas: ['Beginners or returning after a break'] },
@@ -50,6 +71,8 @@ export interface PublicInstructor {
   certification: string | null
   bio: string | null
   photo: string | null
+  /** Arketa's id for them, from the sheet's "Arketa booking link". Null until staff paste it. */
+  arketaHost: string | null
 }
 
 /** Something staff should fix in the sheet. Says the row, never the person's answers. */
@@ -74,6 +97,7 @@ interface Columns {
   bio: number
   hide: number
   photoLink: number
+  arketa: number
   areas: Map<string, number>
 }
 
@@ -97,6 +121,7 @@ export function findColumns(headerRow: string[]): Columns {
     bio: find(h, (x) => /\bbio\b/.test(x)),
     hide: find(h, (x) => x.includes('hide from website')),
     photoLink: find(h, (x) => x.includes('photo')),
+    arketa: find(h, (x) => x.includes('arketa') || x.includes('booking link')),
     areas,
   }
 }
@@ -270,6 +295,9 @@ export async function buildInstructors(
     if (cols.years >= 0 && clean(row[cols.years]) && years === null) {
       warnings.push({ row: rowNumber, message: "Couldn't read years teaching, so it's left off" })
     }
+    const rawLink = cols.arketa >= 0 ? clean(row[cols.arketa]) : null
+    const arketaHost = arketaHostId(rawLink)
+    if (rawLink && !arketaHost) warnings.push({ row: rowNumber, message: "Couldn't read the Arketa booking link, so Book opens the studio's calendar" })
     people.push({
       id: await instructorId(email),
       first,
@@ -281,6 +309,7 @@ export async function buildInstructors(
       certification: cols.certification >= 0 ? clean(row[cols.certification]) : null,
       bio: cols.bio >= 0 ? clean(row[cols.bio]) : null,
       photo: photos.get(email) ?? null,
+      arketaHost,
     })
   }
 

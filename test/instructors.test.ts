@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildInstructors, candidateEmails, driveFileId, forLocation, nameKey, offeredSpecialties, parseLocations, parseYears, photoLinks, photoNames, yearsLabel } from '../src/instructors'
+import { arketaBookingUrl, arketaHostId, buildInstructors, candidateEmails, driveFileId, forLocation, nameKey, offeredSpecialties, parseLocations, parseYears, photoLinks, photoNames, yearsLabel } from '../src/instructors'
 import { choosePhotos, emailFromName, photoOwner } from '../src/photos'
 
 // The real form's headers (29 Oct 2026), plus the columns being added. Rows below are made up.
@@ -38,6 +38,7 @@ const HEADER = [
   'Which locations are you available for privates?',
   'Short bio for the website',
   'Hide from website',
+  'Arketa booking link',
 ]
 
 type Opts = Partial<{
@@ -52,6 +53,7 @@ type Opts = Partial<{
   location: string
   bio: string
   hide: string
+  arketa: string
 }>
 
 function row(o: Opts): unknown[] {
@@ -71,6 +73,7 @@ function row(o: Opts): unknown[] {
     o.location ?? 'Park Slope',
     o.bio ?? '',
     o.hide ?? 'FALSE',
+    o.arketa ?? '',
   ]
 }
 
@@ -235,5 +238,32 @@ describe('photos', () => {
     expect(photoOwner('a@x.com.png', names)).toBe('a@x.com')
     const chosen = choosePhotos([], [{ id: 'z', name: 'Zoe Martin Ruiz.heic', mimeType: 'image/heif' }], new Map(), names)
     expect(Object.fromEntries(chosen)).toEqual({ 'a@x.com': 'z' })
+  })
+})
+
+describe('Arketa booking', () => {
+  const link = 'https://app.arketa.co/iframe/craftpilates/privates/by-service?host=LtWx0pB3l0PROXKmxGCUpTcB4EA2'
+  it('reads the instructor id from the link, the embed code, or the bare id', () => {
+    expect(arketaHostId(link)).toBe('LtWx0pB3l0PROXKmxGCUpTcB4EA2')
+    expect(arketaHostId(`<iframe id="sutraWidgetIframe" src="${link}" width="100%"></iframe>`)).toBe('LtWx0pB3l0PROXKmxGCUpTcB4EA2')
+    expect(arketaHostId(' LtWx0pB3l0PROXKmxGCUpTcB4EA2 ')).toBe('LtWx0pB3l0PROXKmxGCUpTcB4EA2')
+    expect(arketaHostId('ask Maayan')).toBeNull()
+    expect(arketaHostId('')).toBeNull()
+  })
+
+  it("narrows Arketa's page to the studio, and to the instructor when known", () => {
+    expect(arketaBookingUrl('park-slope', 'LtWx0pB3l0PROXKmxGCUpTcB4EA2')).toBe(
+      'https://app.arketa.co/iframe/craftpilates/privates/by-service?host=LtWx0pB3l0PROXKmxGCUpTcB4EA2&location=67ptpiCjvCsriKuEdItN',
+    )
+    expect(arketaBookingUrl('uws', null)).toBe('https://app.arketa.co/iframe/craftpilates/privates/by-service?location=N80JtYm27xFQhqhv8wam')
+  })
+
+  it("keeps each instructor's id, and warns about a link it can't read", async () => {
+    const { instructors, warnings } = await build({ arketa: link }, { email: 'bo@example.com', name: 'Bo Li', arketa: 'see Arketa' })
+    expect(instructors.map((i) => [i.name, i.arketaHost])).toEqual([
+      ['Ana', 'LtWx0pB3l0PROXKmxGCUpTcB4EA2'],
+      ['Bo', null],
+    ])
+    expect(warnings.map((w) => w.message)).toEqual(["Couldn't read the Arketa booking link, so Book opens the studio's calendar"])
   })
 })

@@ -126,6 +126,10 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 /* "More about": the details take the card, the photo shrinks to a strip. */
 .card.open .photo { flex: 0 0 64px; min-height: 64px; }
 .card.open .cert, .card.open .bio { display: block; }
+/* "Not sure who?": the last card, no photo, its words in the middle. */
+.card.any .body { justify-content: center; gap: 12px; padding: 24px 22px; }
+.card.any .bio { display: block; font-size: 15px; }
+.card.any .book { margin-top: 8px; }
 
 .toast {
   position: fixed; z-index: 2147483000; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0;
