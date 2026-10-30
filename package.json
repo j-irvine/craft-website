@@ -1,0 +1,20 @@
+{
+  "name": "craft-website",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-widget.mjs",
+    "typecheck": "node scripts/build-widget.mjs && tsc --noEmit && tsc --noEmit -p tsconfig.widget.json",
+    "test": "vitest run",
+    "preview": "npm run build && node scripts/preview.mjs",
+    "dev": "npm run build && npx wrangler@4 dev --test-scheduled",
+    "deploy": "npm test && npm run build && npx wrangler@4 deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251001.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

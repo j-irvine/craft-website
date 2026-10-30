@@ -1,0 +1,179 @@
+{
+  "_note": "Made-up instructors for previews. Real instructor data never goes in this public repo.",
+  "specialties": [
+    {
+      "key": "beginners",
+      "label": "Beginners"
+    },
+    {
+      "key": "strength",
+      "label": "Strength & athletic"
+    },
+    {
+      "key": "pregnancy",
+      "label": "Pregnancy & postpartum"
+    },
+    {
+      "key": "older-adults",
+      "label": "Older adults & bone health"
+    },
+    {
+      "key": "teens",
+      "label": "Teens"
+    },
+    {
+      "key": "back",
+      "label": "Back pain"
+    },
+    {
+      "key": "injury",
+      "label": "Injury & surgery recovery"
+    },
+    {
+      "key": "neuro",
+      "label": "Neurological conditions"
+    }
+  ],
+  "instructors": [
+    {
+      "id": "a1",
+      "name": "Avery",
+      "locations": [
+        "park-slope",
+        "uws"
+      ],
+      "specialties": [
+        "beginners",
+        "pregnancy",
+        "back",
+        "injury"
+      ],
+      "yearsLabel": "11 years teaching",
+      "certification": "BASI Comprehensive Certification; Pre and Postnatal Pilates training",
+      "bio": "Calm, precise sessions that build strength around whatever your body is dealing with right now.",
+      "photo": null
+    },
+    {
+      "id": "a2",
+      "name": "Bea",
+      "locations": [
+        "park-slope"
+      ],
+      "specialties": [
+        "strength",
+        "beginners"
+      ],
+      "yearsLabel": "3 years teaching",
+      "certification": "Balanced Body Reformer and Mat",
+      "bio": null,
+      "photo": null
+    },
+    {
+      "id": "a3",
+      "name": "Carmen",
+      "locations": [
+        "park-slope"
+      ],
+      "specialties": [
+        "older-adults",
+        "back",
+        "injury",
+        "neuro"
+      ],
+      "yearsLabel": "21 years teaching",
+      "certification": "Romana's Pilates Comprehensive; Polestar Pilates for Rehabilitation; Pilates for Parkinson's workshop series",
+      "bio": "Former physical therapy aide who loves helping people move with confidence again.",
+      "photo": null
+    },
+    {
+      "id": "a4",
+      "name": "Dani",
+      "locations": [
+        "uws"
+      ],
+      "specialties": [
+        "teens",
+        "strength"
+      ],
+      "yearsLabel": "2+ years teaching",
+      "certification": "Club Pilates 500 hr Comprehensive",
+      "bio": null,
+      "photo": null
+    },
+    {
+      "id": "a5",
+      "name": "Eden",
+      "locations": [
+        "park-slope",
+        "uws"
+      ],
+      "specialties": [
+        "pregnancy",
+        "beginners"
+      ],
+      "yearsLabel": "5 years teaching",
+      "certification": "STOTT Pilates Full Certification",
+      "bio": "Mom of two. Sessions that feel good in a changing body.",
+      "photo": null
+    },
+    {
+      "id": "a6",
+      "name": "Frankie",
+      "locations": [
+        "park-slope"
+      ],
+      "specialties": [
+        "strength",
+        "injury"
+      ],
+      "yearsLabel": "8 years teaching",
+      "certification": "Power Pilates Comprehensive",
+      "bio": null,
+      "photo": null
+    },
+    {
+      "id": "a7",
+      "name": "Gia",
+      "locations": [
+        "park-slope",
+        "uws"
+      ],
+      "specialties": [
+        "beginners"
+      ],
+      "yearsLabel": "1+ year teaching",
+      "certification": "Real Pilates NYC Mat and Reformer",
+      "bio": null,
+      "photo": null
+    },
+    {
+      "id": "a8",
+      "name": "Sam K",
+      "locations": [
+        "park-slope"
+      ],
+      "specialties": [
+        "back",
+        "older-adults",
+        "injury"
+      ],
+      "yearsLabel": "13 years teaching",
+      "certification": "Kane School of Core Integration",
+      "bio": null,
+      "photo": null
+    },
+    {
+      "id": "a9",
+      "name": "Sam T",
+      "locations": [
+        "uws",
+        "park-slope"
+      ],
+      "specialties": [],
+      "yearsLabel": "Less than a year teaching",
+      "certification": "GoodDay Pilates",
+      "bio": null,
+      "photo": null
+    }
+  ]
+}
