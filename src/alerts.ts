@@ -49,7 +49,8 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
   }
   const current = new Set(mismatches.map((m) => m.key))
   for (const key of Object.keys(next.open)) if (!current.has(key)) delete next.open[key]
-  for (const m of mismatches) next.open[m.key] ??= { name: m.name, message: m.message, since: at, emailed: false }
+  // Wording can change while one stays open; when it started and whether it was emailed don't.
+  for (const m of mismatches) next.open[m.key] = { ...(next.open[m.key] ?? { since: at, emailed: false }), name: m.name, message: m.message }
 
   const settled = Object.entries(next.open).filter(([, o]) => now.getTime() - Date.parse(o.since) >= SETTLE_MS)
   const fresh = settled.filter(([, o]) => !o.emailed)
