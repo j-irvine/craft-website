@@ -4,8 +4,8 @@
 import type { Location } from './instructors'
 
 const THEMES = [
-  { key: 'chocolate', label: 'Chocolate', bg: '#352222', fg: '#ffe5c8', attr: '' },
-  { key: 'cream', label: 'Cream', bg: '#ffe5c8', fg: '#352222', attr: 'cream' },
+  { key: 'cream', label: 'Cream', bg: '#fcf3e8', fg: '#352222', attr: '' },
+  { key: 'chocolate', label: 'Chocolate', bg: '#352222', fg: '#ffe5c8', attr: 'chocolate' },
   { key: 'forest', label: 'Forest', bg: '#485c3d', fg: '#ffe5c8', attr: 'forest' },
 ]
 
@@ -22,7 +22,7 @@ export function previewPage(location: Location, origin: string, scriptTag?: (loc
 <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700&display=swap" rel="stylesheet">
 ${head}
 <style>
-  :root { --bg: #352222; --fg: #ffe5c8; }
+  :root { --bg: #fcf3e8; --fg: #352222; }
   body { margin: 0; background: var(--bg); color: var(--fg); font-family: Epilogue, system-ui, sans-serif; transition: background .2s; }
   header, section { max-width: 1100px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   header { padding-block: 28px 4px; }
