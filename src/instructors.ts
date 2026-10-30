@@ -60,17 +60,13 @@ export function arketaHostId(raw: unknown): string | null {
   return m ? m[1] : null
 }
 
-/** The public filter chips, in display order, and the form's client areas each one covers. */
+/**
+ * The public filter chips, in display order, and the form's client areas each one covers. The specific
+ * focuses lead and Beginners comes last (owners, 30 Oct 2026: lead with something more specific).
+ * Tags on cards follow the same order.
+ */
 export const SPECIALTIES = [
-  { key: 'beginners', label: 'Beginners', areas: ['Beginners or returning after a break'] },
-  { key: 'strength', label: 'Strength & athletic', areas: ['Strength and athletic performance'] },
   { key: 'pregnancy', label: 'Pregnancy & postpartum', areas: ['Pregnancy', 'Postpartum'] },
-  {
-    key: 'older-adults',
-    label: 'Older adults & bone health',
-    areas: ['Older adults, balance and mobility', 'Low bone density, including osteoporosis'],
-  },
-  { key: 'teens', label: 'Teens', areas: ['Teens'] },
   {
     key: 'back',
     label: 'Back pain',
@@ -87,7 +83,15 @@ export const SPECIALTIES = [
       'Hypermobility and joint stability',
     ],
   },
+  { key: 'strength', label: 'Strength & athletic', areas: ['Strength and athletic performance'] },
+  {
+    key: 'older-adults',
+    label: 'Older adults & bone health',
+    areas: ['Older adults, balance and mobility', 'Low bone density, including osteoporosis'],
+  },
   { key: 'neuro', label: 'Neurological conditions', areas: ['Neurological conditions affecting movement or balance'] },
+  { key: 'teens', label: 'Teens', areas: ['Teens'] },
+  { key: 'beginners', label: 'Beginners', areas: ['Beginners or returning after a break'] },
 ] as const
 
 export type SpecialtyKey = (typeof SPECIALTIES)[number]['key']

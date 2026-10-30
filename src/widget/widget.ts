@@ -130,20 +130,37 @@ class FindYourPerson extends HTMLElement {
       </article>`
     }
 
+    // While a focus is picked, its instructors lead the row and "Any availability" moves to the end, so on a
+    // phone (where it fills most of the first screen) the change is plain to see (owners, 30 Oct 2026).
+    const cards = d.instructors.map(card).join('')
+    const count = `${shown.length} of ${d.instructors.length} instructor${d.instructors.length === 1 ? '' : 's'}`
+    const chipsLeft = this.root.querySelector('.chips')?.scrollLeft ?? 0
     this.shell().removeAttribute('aria-busy')
     this.shell().innerHTML = `
-      <div class="chips" role="group" aria-label="Filter by specialty">
-        ${chip(null, 'All')}${offered.map((s) => chip(s.key, s.label)).join('')}
+      <div class="filters">
+        <p class="filter-label" id="fyp-focus">Instructor focus<span class="count" role="status">${this.filter ? count : ''}</span></p>
+        <div class="chips" role="group" aria-labelledby="fyp-focus">
+          ${chip(null, 'All')}${offered.map((s) => chip(s.key, s.label)).join('')}
+        </div>
       </div>
       <div class="rail">
         <button class="nav prev" type="button" aria-label="Previous instructors">${ARROW}</button>
         <div class="track" tabindex="0" aria-label="Instructors">
-          ${anyone}${d.instructors.map(card).join('')}${shown.length ? '' : `<p class="note">No instructors match that yet.</p>`}
+          ${this.filter ? cards + anyone : anyone + cards}${shown.length ? '' : `<p class="note">No instructors match that yet.</p>`}
         </div>
         <button class="nav next" type="button" aria-label="More instructors">${ARROW}</button>
       </div>
       <div class="toast" role="status" aria-live="polite"></div>`
 
+    // The chip row is rebuilt with everything else: keep it where it was, with the picked chip in full view.
+    const chips = this.root.querySelector<HTMLElement>('.chips')!
+    chips.scrollLeft = chipsLeft
+    const picked = chips.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (picked) {
+      const start = picked.offsetLeft - chips.offsetLeft
+      if (start < chips.scrollLeft) chips.scrollLeft = start - 24
+      else if (start + picked.offsetWidth > chips.scrollLeft + chips.clientWidth) chips.scrollLeft = start + picked.offsetWidth - chips.clientWidth + 24
+    }
     this.root.querySelectorAll<HTMLButtonElement>('.chip').forEach((b) =>
       b.addEventListener('click', () => {
         this.filter = b.dataset.filter || null
