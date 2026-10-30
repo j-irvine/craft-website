@@ -90,12 +90,12 @@ class FindYourPerson extends HTMLElement {
       `<button class="chip" type="button" data-filter="${key ?? ''}" aria-pressed="${this.filter === key}">${esc(label)}</button>`
 
     const panel = this.bookingMode() === 'panel' && Boolean(d.booking)
-    // Last in the row: for clients who'd rather pick a time than a person.
+    // First in the row, as in Arketa's own instructor picker: many clients choose by time, not by person (owners, 30 Oct 2026).
     const anyone = panel
       ? `<article class="card any">
           <div class="body">
-            <h3>Not sure who?</h3>
-            <p class="bio">Pick a time for a private or duet at ${esc(d.location)}, with any instructor.</p>
+            <h3>Any availability</h3>
+            <p class="bio">Every open time for privates and duets at ${esc(d.location)}, with any instructor.</p>
             <button class="book" type="button" data-book=""><span>See all times</span>${ARROW}</button>
           </div>
         </article>`
@@ -133,7 +133,7 @@ class FindYourPerson extends HTMLElement {
       <div class="rail">
         <button class="nav prev" type="button" aria-label="Previous instructors">${ARROW}</button>
         <div class="track" tabindex="0" aria-label="Instructors">
-          ${shown.length ? shown.map(card).join('') : `<p class="note">No instructors match that yet.</p>`}${anyone}
+          ${anyone}${shown.length ? shown.map(card).join('') : `<p class="note">No instructors match that yet.</p>`}
         </div>
         <button class="nav next" type="button" aria-label="More instructors">${ARROW}</button>
       </div>
@@ -239,7 +239,7 @@ class FindYourPerson extends HTMLElement {
   private book(i: Instructor | null, button: HTMLElement) {
     const d = this.data!
     if (this.bookingMode() === 'panel' && d.booking) {
-      if (!i) return openBooking('Book a private or duet', `Any instructor · ${d.location}`, d.booking, button)
+      if (!i) return openBooking('Any availability', `Privates and duets with any instructor · ${d.location}`, d.booking, button)
       // Until staff add their Arketa link to the sheet, the studio's page, where the client picks them.
       if (i.booking) return openBooking(`Book with ${i.name}`, `Private or duet · ${d.location}`, i.booking, button)
       return openBooking(`Book with ${i.name}`, `Choose ${i.name} as your instructor · ${d.location}`, d.booking, button)
