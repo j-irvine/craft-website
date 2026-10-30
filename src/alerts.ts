@@ -12,6 +12,7 @@ const READ_FAILURE_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 interface Open {
+  name?: string
   message: string
   since: string
   emailed: boolean
@@ -35,9 +36,10 @@ export interface Email {
 /**
  * The next state and the email to send now, if any. `readFailed` is whether this run couldn't read Arketa
  * (the mismatches then come from the last good copy). `canSend` false only tracks them. `sendNow` sends the
- * full list at once, like the Monday reminder, even when nothing is open (staff asked for it from GitHub). Mondays from 9 am New York time count for the reminder.
+ * full list at once, like the Monday reminder, even when nothing is open (staff asked for it from GitHub).
+ * `keep` holds open ones this run couldn't check (photos, when the folder couldn't be read). Mondays from 9 am New York time count for the reminder.
  */
-export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed: boolean, now: Date, canSend = true, sendNow = false): { state: AlertState; email: Email | null } {
+export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed: boolean, now: Date, canSend = true, sendNow = false, keep: (key: string) => boolean = () => false): { state: AlertState; email: Email | null } {
   const at = now.toISOString()
   const next: AlertState = { ...state, open: { ...state.open } }
   if (readFailed) {
@@ -47,8 +49,9 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
     next.readFailureEmailed = false
   }
   const current = new Set(mismatches.map((m) => m.key))
-  for (const key of Object.keys(next.open)) if (!current.has(key)) delete next.open[key]
-  for (const m of mismatches) next.open[m.key] ??= { message: m.message, since: at, emailed: false }
+  for (const key of Object.keys(next.open)) if (!current.has(key) && !keep(key)) delete next.open[key]
+  // Wording can change while one stays open; when it started and whether it was emailed don't.
+  for (const m of mismatches) next.open[m.key] = { ...(next.open[m.key] ?? { since: at, emailed: false }), name: m.name, message: m.message }
 
   const settled = Object.entries(next.open).filter(([, o]) => now.getTime() - Date.parse(o.since) >= SETTLE_MS)
   const fresh = settled.filter(([, o]) => !o.emailed)
@@ -66,9 +69,9 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
     const all = Object.values(next.open)
     for (const [key, o] of Object.entries(next.open)) next.open[key] = { ...o, emailed: true }
     const text = all.length
-      ? [`Open right now (${all.length}):`, ...all.map((o) => `- ${o.message}`), '', FOOTER].join('\n')
+      ? [INTRO, '', ...all.map((o) => `- ${o.message}`), '', FOOTER].join('\n')
       : 'Everyone on the website for privates matches Arketa at each studio, and everyone set up in Arketa is on the website.'
-    return { state: next, email: { subject: all.length ? subjectFor(all.length) : 'Find Your Person: the sheet and Arketa agree', text } }
+    return { state: next, email: { subject: all.length ? subjectFor(all) : 'Privates booking: the instructor sheet and Arketa match', text } }
   }
 
   const freshKeys = new Set(fresh.map(([key]) => key))
@@ -78,28 +81,37 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
     lines.push("The website hasn't been able to read Arketa's privates instructors for a day, so it can't check them against the sheet. Booking still works from the last good copy.", '')
   }
   if (fresh.length) {
-    lines.push(fresh.length === 1 ? 'New since the last email:' : `New since the last email (${fresh.length}):`, ...fresh.map(([, o]) => `- ${o.message}`), '')
+    lines.push(INTRO, '', ...(older.length ? ['New:'] : []), ...fresh.map(([, o]) => `- ${o.message}`), '')
   }
   if (older.length) {
-    lines.push(fresh.length ? 'Still open:' : `Still open (${older.length}):`, ...older.map(([, o]) => `- ${o.message}`), '')
+    lines.push(...(fresh.length ? ['Still to fix from before:'] : [INTRO, '']), ...older.map(([, o]) => `- ${o.message}`), '')
   }
   if (settled.length) {
     lines.push(FOOTER)
   }
   const count = settled.length
   const subject = readProblem && !count
-    ? "Find Your Person: can't check Arketa"
-    : subjectFor(count)
+    ? "Please check: the website can't read Arketa's privates"
+    : subjectFor(settled.map(([, o]) => o))
   return { state: next, email: { subject, text: lines.join('\n').trim() } }
 }
 
 const FOOTER = [
-  "Each of these is usually a mistake, either in the instructor sheet (privates answer, locations, Hide from website) or in which Private and Duet services the instructor is on in Arketa. Once the two agree, it drops off this list by itself.",
+  "Each of these is usually a mistake, either in the instructor sheet (privates answer, locations, Hide from website) or in which Private and Duet services the instructor is on in Arketa. Photos go in the website photos folder, named by the instructor's full name or form email. Once it's fixed, it drops off this list by itself.",
   '',
   'Someone at a studio on the website who has no Arketa calendar there gets a message to email hello@craftpilates.com instead of a booking calendar.',
 ].join('\n')
 
-const subjectFor = (count: number) => `Find Your Person: ${count} ${count === 1 ? 'thing' : 'things'} to check between the sheet and Arketa`
+const INTRO = "These instructors' privates on craftpilates.com need fixing, in the instructor sheet, the photos folder or Arketa:"
+
+/** "Please fix: website privates for Alex, Alyssa, Julianna and 11 others", so it reads as a to-do, not a newsletter. */
+function subjectFor(items: Open[]): string {
+  const names = [...new Set(items.map((o) => o.name).filter((n): n is string => Boolean(n)))]
+  const shown = names.slice(0, 3)
+  const others = names.length - shown.length
+  const who = !shown.length ? `${items.length} instructors` : others > 0 ? `${shown.join(', ')} and ${others} ${others === 1 ? 'other' : 'others'}` : shown.length > 1 ? `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)}` : shown[0]
+  return `Please fix: website privates for ${who}`
+}
 
 function isMondayMorning(now: Date): boolean {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(now)
@@ -113,7 +125,7 @@ export async function sendEmail(apiKey: string, to: string, email: Email, fetche
   const res = await fetcher('https://api.resend.com/emails', {
     method: 'POST',
     headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ from: 'Craft Pilates website <hello@craftpilates.com>', to: to.split(',').map((s) => s.trim()), subject: email.subject, text: email.text }),
+    body: JSON.stringify({ from: 'Craft Pilates <hello@craftpilates.com>', to: to.split(',').map((s) => s.trim()), subject: email.subject, text: email.text }),
   })
   if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`)
 }

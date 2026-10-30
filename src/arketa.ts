@@ -60,6 +60,8 @@ export function offeredTypes(hosts: ServiceHosts, location: Location, host: stri
 export interface Mismatch {
   /** Stable while the mismatch lasts, so each one is emailed once. */
   key: string
+  /** Who it's about, for the email's subject. */
+  name: string
   message: string
 }
 
@@ -78,7 +80,7 @@ export function findMismatches(
   const known = Object.keys(names).length > 0
   for (const i of instructors) {
     if (!i.arketaHost) {
-      if (known) out.push({ key: `unmatched:${i.name}`, message: `${i.name} is on the website, but no one with that name is set up for privates or duets in Arketa.` })
+      if (known) out.push({ key: `unmatched:${i.name}`, name: i.name, message: `${i.name} is on the website, but no one with that name is set up for privates or duets in Arketa.` })
       continue
     }
     for (const location of i.locations) {
@@ -90,7 +92,7 @@ export function findMismatches(
       const message = has.length
         ? `${i.name} is set up in Arketa for ${studio} ${TYPE_NAMES[has[0]]} but not ${TYPE_NAMES[missing[0]]}.`
         : `${i.name} is on the website for ${studio}, but isn't set up in Arketa for ${studio} ${missing.map((t) => TYPE_NAMES[t]).join(' or ')}.`
-      out.push({ key: `missing:${location}:${missing.join('+')}:${i.arketaHost}`, message })
+      out.push({ key: `missing:${location}:${missing.join('+')}:${i.arketaHost}`, name: i.name, message })
     }
   }
   for (const location of Object.keys(LOCATIONS) as Location[]) {
@@ -105,8 +107,26 @@ export function findMismatches(
       const name = names[h] ?? 'Someone without a name'
       out.push({
         key: `extra:${location}:${h}`,
+        name,
         message: `${name} is set up in Arketa for ${studio} ${types.map((t) => TYPE_NAMES[t]).join(' and ')}, but isn't on the website for ${studio}.`,
       })
+    }
+  }
+  return out
+}
+
+/**
+ * Cards that need something from staff (owners, 30 Oct 2026): no photo in the folder, or no specialty
+ * tags. Emailed with the mismatches above. Photos are skipped when they couldn't be read this run.
+ */
+export function cardIssues(instructors: { name: string; photo: string | null; specialties: unknown[] }[], photosRead: boolean): Mismatch[] {
+  const out: Mismatch[] = []
+  for (const i of instructors) {
+    if (photosRead && !i.photo) {
+      out.push({ key: `photo:${i.name}`, name: i.name, message: `${i.name} has no photo in the website photos folder, so the card shows the placeholder.` })
+    }
+    if (!i.specialties.length) {
+      out.push({ key: `tags:${i.name}`, name: i.name, message: `${i.name} has no specialty tags (no client area marked "taught a few", "substantial experience" or "completed training" in the form), so ${i.name} doesn't show under any filter.` })
     }
   }
   return out
