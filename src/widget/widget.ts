@@ -43,7 +43,7 @@ const DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-6-6
  * "panel" opens Arketa's booking for that instructor at this studio, privates and duets, over the page.
  * The snippet's data-booking picks one, so the panel can be tried before it becomes the default.
  */
-const DEFAULT_BOOKING: 'scroll' | 'panel' = 'scroll'
+const DEFAULT_BOOKING: 'scroll' | 'panel' = 'panel'
 
 const STUDIO_EMAIL = 'hello@craftpilates.com'
 
