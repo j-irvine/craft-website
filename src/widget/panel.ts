@@ -37,14 +37,26 @@ p { margin: 6px 0 0; font: 13px/1.4 'Epilogue', system-ui, sans-serif; }
 .tab[aria-selected='true'] { background: var(--chocolate); color: var(--cream); }
 .frame { flex: 1; min-height: 0; position: relative; background: #fff; border-top: 1px solid color-mix(in srgb, var(--chocolate) 15%, transparent); }
 iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.unavailable { flex: 1; min-height: 0; padding: 8px 22px 28px; }
+.unavailable p { margin: 0 0 18px; max-width: 34em; font: 16px/1.5 'Epilogue', system-ui, sans-serif; }
+.email {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; background: var(--chocolate); color: var(--cream);
+  font: 700 12px/1 'Craft Trio Grotesk', 'Trio Grotesk', 'Epilogue', system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; text-decoration: none;
+}
+.email:hover { background: var(--terracotta); }
+.panel.short { height: auto; }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; font: 14px/1.4 'Epilogue', system-ui, sans-serif; color: var(--chocolate); }
 @media (max-width: 600px) {
   :host { display: block; }
   .panel { width: 100%; height: 100%; height: 100dvh; box-shadow: none; }
   header { padding: max(14px, env(safe-area-inset-top, 0px)) 14px 12px 16px; }
+  .short header { padding-top: 14px; }
   h2 { font-size: 26px; }
   .tabs { padding: 0 16px 12px; }
   .tab { flex: 1; }
+  :host(.short) { display: grid; place-items: center; }
+  .panel.short { width: calc(100% - 32px); height: auto; box-shadow: 0 20px 60px rgb(0 0 0 / .35); }
+  .unavailable { padding: 8px 16px 24px; }
 }
 `
 
@@ -61,11 +73,17 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 let current: { host: HTMLElement; done: () => void } | null = null
 
+/** Says to email the studio, when there's no calendar to book (owners, 30 Oct 2026). */
+export interface Unavailable {
+  message: string
+  email: string
+}
+
 /**
  * Opens the panel on the first of `sessions` (Private, then Duet), with tabs to switch when there's more than one.
- * Esc, the × or a tap outside closes it, and focus goes back to `returnTo`.
+ * With no sessions, it shows `unavailable` instead. Esc, the × or a tap outside closes it, and focus goes back to `returnTo`.
  */
-export function openBooking(title: string, note: string, sessions: Session[], returnTo?: HTMLElement | null) {
+export function openBooking(title: string, note: string, sessions: Session[], returnTo?: HTMLElement | null, unavailable?: Unavailable) {
   const tabs = sessions.length > 1
     ? `<div class="tabs" role="tablist" aria-label="Session type">${sessions
         .map((s, n) => `<button class="tab" type="button" role="tab" aria-selected="${n === 0}" data-n="${n}">${esc(s.label)}</button>`)
@@ -73,18 +91,21 @@ export function openBooking(title: string, note: string, sessions: Session[], re
     : ''
   current?.done()
   const host = document.createElement('craft-booking-panel')
+  if (!sessions.length) host.className = 'short'
   const root = host.attachShadow({ mode: 'open' })
   root.innerHTML = `<style>${CSS}</style>
-    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="t">
+    <div class="panel${sessions.length ? '' : ' short'}" role="dialog" aria-modal="true" aria-labelledby="t">
       <header>
         <div class="titles"><h2 id="t">${esc(title)}</h2><p>${esc(note)}</p></div>
         <button class="close" type="button" aria-label="Close">${CLOSE}</button>
       </header>
       ${tabs}
-      <div class="frame">
+      ${sessions.length
+        ? `<div class="frame">
         <p class="loading">Loading times…</p>
         <iframe title="${esc(title)}" src="${esc(sessions[0].url)}" allow="payment; fullscreen" allowfullscreen></iframe>
-      </div>
+      </div>`
+        : `<div class="unavailable"><p>${esc(unavailable?.message ?? '')}</p>${unavailable ? `<a class="email" href="mailto:${esc(unavailable.email)}">Email us</a>` : ''}</div>`}
     </div>`
 
   // Keep the page behind from scrolling while the panel is open.
@@ -107,13 +128,13 @@ export function openBooking(title: string, note: string, sessions: Session[], re
   host.addEventListener('click', (e) => {
     if (e.composedPath()[0] === host) done()
   })
-  const frame = root.querySelector('iframe')!
-  frame.addEventListener('load', () => root.querySelector('.loading')?.remove())
+  const frame = root.querySelector('iframe')
+  frame?.addEventListener('load', () => root.querySelector('.loading')?.remove())
   root.querySelectorAll<HTMLButtonElement>('.tab').forEach((tab) =>
     tab.addEventListener('click', () => {
       if (tab.getAttribute('aria-selected') === 'true') return
       root.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)))
-      frame.src = sessions[Number(tab.dataset.n)].url
+      frame!.src = sessions[Number(tab.dataset.n)].url
     }),
   )
 

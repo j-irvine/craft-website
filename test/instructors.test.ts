@@ -136,16 +136,17 @@ describe('buildInstructors', () => {
     expect(instructors[0]).toMatchObject({ name: 'Ana', locations: ['park-slope'], yearsLabel: '5 years teaching' })
   })
 
-  it('tags a specialty only for substantial experience or completed training', async () => {
+  it('tags a specialty for any teaching experience or completed training', async () => {
     const { instructors } = await build({
       areas: {
-        Pregnancy: 'Have taught a few clients in this group, Interested in teaching this group',
-        Postpartum: 'Completed relevant training',
+        Pregnancy: 'Completed relevant training',
+        Teens: 'Have taught a few clients in this group, Interested in teaching this group',
         Sciatica: 'Have substantial teaching experience with this group',
-        Teens: 'Interested in teaching this group',
+        'Strength and athletic performance': 'Interested in teaching this group',
+        'Neurological conditions affecting movement or balance': 'Have not taught yet',
       },
     })
-    expect(instructors[0].specialties).toEqual(['pregnancy', 'back'])
+    expect(instructors[0].specialties).toEqual(['pregnancy', 'teens', 'back'])
   })
 
   it('uses the latest response per email', async () => {
