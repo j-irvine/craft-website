@@ -197,6 +197,33 @@ export function candidateEmails(rows: unknown[][]): string[] {
     .map(([email]) => email)
 }
 
+/** A name reduced for matching photo file names: lowercase, no accents, words separated by single spaces. */
+export function nameKey(name: string): string {
+  return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+/**
+ * Candidates' full names (as nameKey) to their email, for photos named by name rather than email.
+ * A name two people share is left out, so neither gets the other's photo.
+ */
+export function photoNames(rows: unknown[][]): Map<string, string> {
+  const [header, ...body] = rows
+  const cols = findColumns((header ?? []).map(String))
+  const out = new Map<string, string>()
+  if (cols.name < 0 || cols.email < 0) return out
+  const candidates = new Set(candidateEmails(rows))
+  const clashes = new Set<string>()
+  for (const [email, { row }] of latestByEmail(body, cols)) {
+    if (!candidates.has(email)) continue
+    const key = nameKey(String(row[cols.name] ?? ''))
+    if (!key) continue
+    if (out.has(key)) clashes.add(key)
+    out.set(key, email)
+  }
+  for (const key of clashes) out.delete(key)
+  return out
+}
+
 /** A Drive file id from a share link (".../file/d/<id>/view", "...open?id=<id>") or a bare id. */
 export function driveFileId(link: unknown): string | null {
   const s = String(link ?? '').trim()

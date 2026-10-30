@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildInstructors, candidateEmails, driveFileId, forLocation, offeredSpecialties, parseLocations, parseYears, photoLinks, yearsLabel } from '../src/instructors'
-import { choosePhotos, emailFromName } from '../src/photos'
+import { buildInstructors, candidateEmails, driveFileId, forLocation, nameKey, offeredSpecialties, parseLocations, parseYears, photoLinks, photoNames, yearsLabel } from '../src/instructors'
+import { choosePhotos, emailFromName, photoOwner } from '../src/photos'
 
 // The real form's headers (29 Oct 2026), plus the columns being added. Rows below are made up.
 const AREAS = [
@@ -215,5 +215,24 @@ describe('photos', () => {
     ]
     expect(Object.fromEntries(photoLinks(rows))).toEqual({ 'a@x.com': '1AbCdEfGhIjKlMnOpQrS' })
     expect(candidateEmails(rows)).toEqual(['a@x.com'])
+  })
+
+  it('matches photos named by full name', () => {
+    const header = HEADER
+    const rows = [
+      header,
+      row({ email: 'a@x.com', name: 'Zoë  Martín-Ruiz' }),
+      row({ email: 'b@x.com', name: 'Sam Lee' }),
+      row({ email: 'c@x.com', name: 'Sam Lee' }),
+      row({ email: 'd@x.com', name: 'Dee Not', privates: 'Not currently' }),
+    ]
+    const names = photoNames(rows)
+    expect(nameKey('Zoë  Martín-Ruiz')).toBe('zoe martin ruiz')
+    expect(photoOwner('zoe martin-ruiz.JPG', names)).toBe('a@x.com')
+    expect(photoOwner('Sam Lee.jpg', names)).toBeNull()
+    expect(photoOwner('Dee Not.jpg', names)).toBeNull()
+    expect(photoOwner('a@x.com.png', names)).toBe('a@x.com')
+    const chosen = choosePhotos([], [{ id: 'z', name: 'Zoe Martin Ruiz.heic', mimeType: 'image/heif' }], new Map(), names)
+    expect(Object.fromEntries(chosen)).toEqual({ 'a@x.com': 'z' })
   })
 })

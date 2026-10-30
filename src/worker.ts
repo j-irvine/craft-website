@@ -2,7 +2,7 @@
 // A cron re-reads the instructor sheet every 5 minutes and keeps the client-safe list in KV.
 
 import { WIDGET_JS } from './generated/widget'
-import { buildInstructors, candidateEmails, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
+import { buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
 import { syncPhotos, type PhotoCounts } from './photos'
 import { previewPage } from './preview'
@@ -59,7 +59,7 @@ export async function refresh(env: Env): Promise<void> {
       step('photos')
       // Photos never hold up the list: a failure here shows as a warning, and cards keep the placeholder.
       try {
-        ;({ photos, errors: photoErrors, counts: photoCounts } = await syncPhotos(env.DATA, sa, env.PHOTOS_FOLDER_ID, photoLinks(rows), candidateEmails(rows)))
+        ;({ photos, errors: photoErrors, counts: photoCounts } = await syncPhotos(env.DATA, sa, env.PHOTOS_FOLDER_ID, photoLinks(rows), candidateEmails(rows), photoNames(rows)))
       } catch (e) {
         photoErrors = [`Photos: ${String(e)}`]
       }
