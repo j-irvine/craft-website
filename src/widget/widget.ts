@@ -39,9 +39,10 @@ const DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-6-6
 /**
  * What "Book with [name]" does: "scroll" goes down to the page's Arketa calendar (owners, 29 Oct 2026);
  * "panel" opens Arketa's booking for that instructor at this studio, privates and duets, over the page.
- * The snippet's data-booking picks one, so the panel can be tried before it becomes the default.
+ * The snippet's data-booking picks one. The panel is the default from launch (owners, 30 Oct 2026), so the
+ * Arketa calendars come off the privates pages.
  */
-const DEFAULT_BOOKING: 'scroll' | 'panel' = 'scroll'
+const DEFAULT_BOOKING: 'scroll' | 'panel' = 'panel'
 
 const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 

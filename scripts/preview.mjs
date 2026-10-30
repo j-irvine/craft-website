@@ -35,7 +35,7 @@ const head = fontDir
   ? `<style>${face('Craft KK Topo', 400, `${fontDir}/KK-Topo/KK-Topo-Regular.woff2`)}\n${face('Craft Trio Grotesk', 700, `${fontDir}/Trio Grotesk/Web/TrioGrotesk-Bold.woff2`)}</style>`
   : ''
 let html = previewPage(location, '', tag, head, panel)
-html = html.replace('</body>', `<script>${widget.replace(/<\/script/gi, '<\\/script')}</script></body>`)
+html = html.replace('</body>', () => `<script>${widget.replace(/<\/script/gi, '<\\/script')}</script></body>`)
 mkdirSync('dist', { recursive: true })
 const suffix = panel ? '-panel' : ''
 writeFileSync(`dist/preview-${location}${suffix}.html`, html)
