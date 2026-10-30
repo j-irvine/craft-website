@@ -175,19 +175,46 @@ class FindYourPerson extends HTMLElement {
     this.track().addEventListener('scroll', () => this.updateNav(), { passive: true })
     requestAnimationFrame(() => {
       this.updateNav()
-      this.fitTags()
+      this.fit()
     })
     // Tags wrap differently once the brand fonts arrive and when the Showit box changes width.
-    void document.fonts?.ready.then(() => this.fitTags())
+    void document.fonts?.ready.then(() => this.fit())
     if (!this.resize && typeof ResizeObserver !== 'undefined') {
       let width = 0
       this.resize = new ResizeObserver(([entry]) => {
         if (Math.abs(entry.contentRect.width - width) < 1) return
         width = entry.contentRect.width
-        this.fitTags()
+        this.fit()
       })
       this.resize.observe(this)
     }
+  }
+
+  private fit() {
+    this.fitTags()
+    this.fitBodies()
+  }
+
+  /**
+   * Closed cards' text is one height, the fullest card's, so names line up without a gap above most
+   * cards' buttons (owners, Oct 30). Measured with the button straight under the text.
+   */
+  private fitBodies() {
+    const bodies = [...this.root.querySelectorAll<HTMLElement>('.card:not(.open):not(.all-tags):not(.any) .body')]
+    if (!bodies.length) return
+    this.style.removeProperty('--body-h')
+    const tallest = Math.max(
+      ...bodies.map((b) => {
+        b.style.height = 'auto'
+        const book = b.querySelector<HTMLElement>('.book')
+        if (book) book.style.marginTop = '10px'
+        const h = b.getBoundingClientRect().height
+        b.style.height = ''
+        if (book) book.style.marginTop = ''
+        return h
+      }),
+    )
+    if (tallest > 0) this.style.setProperty('--body-h', `${Math.ceil(tallest)}px`)
   }
 
   /**

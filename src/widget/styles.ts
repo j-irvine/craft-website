@@ -33,6 +33,11 @@ export const CSS = `
   --nav: var(--chocolate);
   --nav-text: var(--cream);
   --photo-bg: var(--forest);
+  --any-bg: var(--cream);
+  --any-text: var(--chocolate);
+  --any-title: var(--terracotta);
+  --any-cta: var(--chocolate);
+  --any-cta-text: var(--cream);
 
   display: block;
   height: 100%;
@@ -48,6 +53,11 @@ export const CSS = `
   --chip-on-bg: var(--chocolate);
   --chip-on-text: var(--cream);
   --card: color-mix(in srgb, var(--chocolate) 7%, var(--cream));
+  --any-bg: var(--chocolate);
+  --any-text: var(--cream);
+  --any-title: var(--cream);
+  --any-cta: var(--cream);
+  --any-cta-text: var(--chocolate);
 }
 /* Forest section: cream text, cream cards, mint highlights. */
 :host([data-theme='forest']) {
@@ -57,6 +67,11 @@ export const CSS = `
   --muted: color-mix(in srgb, var(--cream) 75%, var(--forest));
   --chip-on-bg: var(--mint);
   --chip-on-text: var(--forest);
+  --any-bg: var(--chocolate);
+  --any-text: var(--cream);
+  --any-title: var(--cream);
+  --any-cta: var(--cream);
+  --any-cta-text: var(--chocolate);
 }
 * { box-sizing: border-box; }
 .fyp { container-type: inline-size; height: 100%; display: flex; flex-direction: column; gap: 16px; position: relative; }
@@ -97,8 +112,9 @@ export const CSS = `
 /* The socks shot: keep the socks in view however the card crops it. */
 .photo img.placeholder { object-position: 60% 4%; }
 /* Every closed card's body is one height, so photos and names line up and nothing scrolls inside it:
-   up to 3 lines of tags, then "+N more" (owners, Oct 30: cards sized to all their tags looked odd). */
-.body { flex: none; height: 268px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
+   up to 3 lines of tags, then "+N more" (owners, Oct 30: cards sized to all their tags looked odd).
+   The height is the fullest card's (--body-h, set by fitBodies), so no card has much space above its button. */
+.body { flex: none; height: var(--body-h, 268px); padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
 h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .years { margin: 0; font: 700 10px/1.2 var(--font-sub); letter-spacing: .14em; text-transform: uppercase; color: var(--years); }
 .tags { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; max-height: 74px; overflow: hidden; }
@@ -128,20 +144,21 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .book svg { flex: none; width: 14px; height: 14px; }
 .book:hover { background: var(--cta-hover); }
 
-/* "More about" and "+N more": the details take the card and the photo shrinks to a strip. Only a card
-   with more than even that holds scrolls. */
-.card.open .photo, .card.all-tags .photo { flex: 0 0 64px; min-height: 64px; }
-.card.open .body, .card.all-tags .body { flex: 1 1 auto; height: auto; min-height: 0; overflow-y: auto; }
+/* "More about" and "+N more": the details push the photo up, down to a strip, and the button stays right
+   under them (owners, Oct 30: no gap). Only a card with more than even that holds scrolls. */
+.card.open .photo, .card.all-tags .photo { flex: 1 1 64px; min-height: 64px; }
+.card.open .body, .card.all-tags .body { flex: 0 1 auto; height: auto; min-height: 0; overflow-y: auto; }
+.card.open .book, .card.all-tags .book { margin-top: 10px; }
 .card.open .tags, .card.all-tags .tags { max-height: none; }
 .card.open .cert, .card.open .bio { display: block; }
-/* "Any availability": the first card, forest with cream words so it reads as the main way in. */
-.card.any { background: var(--forest); color: var(--cream); }
-:host([data-theme='forest']) .card.any { background: var(--chocolate); }
-.card.any .body { justify-content: center; gap: 12px; padding: 24px 22px; }
-.card.any h3 { color: var(--cream); }
+/* "Any availability": the first card, so it reads as the main way in. Cream on the chocolate section and
+   chocolate on the cream one (owners, Oct 30); chocolate on forest. */
+.card.any { background: var(--any-bg); color: var(--any-text); }
+.card.any .body { flex: 1 1 auto; height: auto; justify-content: center; gap: 12px; padding: 24px 22px; }
+.card.any h3 { color: var(--any-title); }
 .card.any .bio { display: block; font-size: 15px; }
-.card.any .book { margin-top: 8px; background: var(--cream); color: var(--chocolate); }
-.card.any .book:hover { background: var(--mint); }
+.card.any .book { margin-top: 8px; background: var(--any-cta); color: var(--any-cta-text); }
+.card.any .book:hover { background: var(--terracotta); color: var(--cream); }
 
 .toast {
   position: fixed; z-index: 2147483000; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0;
