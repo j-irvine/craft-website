@@ -146,7 +146,7 @@ describe('buildInstructors', () => {
         'Neurological conditions affecting movement or balance': 'Have not taught yet',
       },
     })
-    expect(instructors[0].specialties).toEqual(['pregnancy', 'teens', 'back'])
+    expect(instructors[0].specialties).toEqual(['pregnancy', 'back', 'teens'])
   })
 
   it('uses the latest response per email', async () => {

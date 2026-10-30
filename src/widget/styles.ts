@@ -77,6 +77,11 @@ export const CSS = `
 .fyp { container-type: inline-size; height: 100%; display: flex; flex-direction: column; gap: 16px; position: relative; }
 .note { margin: auto; padding: 16px; text-align: center; color: var(--muted); max-width: 32ch; line-height: 1.45; }
 
+.filters { flex: none; display: flex; flex-direction: column; gap: 8px; }
+/* Says what the chips are (owners, 30 Oct 2026: "All" then "Beginners" didn't read as the instructors' focus),
+   and, once one is picked, how many instructors it leaves. */
+.filter-label { margin: 0; height: 15px; display: flex; align-items: baseline; gap: 12px; font: 700 10px/15px var(--font-sub); letter-spacing: .14em; text-transform: uppercase; }
+.filter-label .count { font: 12px/15px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; flex: none; }
 .chip {
   font: 700 10px/1 var(--font-sub); letter-spacing: .12em; text-transform: uppercase;

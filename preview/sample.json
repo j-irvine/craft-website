@@ -2,24 +2,8 @@
   "_note": "Made-up instructors for previews. Real instructor data never goes in this public repo. The one arketaHost is a real instructor's public booking id, so the preview's Book opens real times.",
   "specialties": [
     {
-      "key": "beginners",
-      "label": "Beginners"
-    },
-    {
-      "key": "strength",
-      "label": "Strength & athletic"
-    },
-    {
       "key": "pregnancy",
       "label": "Pregnancy & postpartum"
-    },
-    {
-      "key": "older-adults",
-      "label": "Older adults & bone health"
-    },
-    {
-      "key": "teens",
-      "label": "Teens"
     },
     {
       "key": "back",
@@ -30,8 +14,24 @@
       "label": "Injury & surgery recovery"
     },
     {
+      "key": "strength",
+      "label": "Strength & athletic"
+    },
+    {
+      "key": "older-adults",
+      "label": "Older adults & bone health"
+    },
+    {
       "key": "neuro",
       "label": "Neurological conditions"
+    },
+    {
+      "key": "teens",
+      "label": "Teens"
+    },
+    {
+      "key": "beginners",
+      "label": "Beginners"
     }
   ],
   "instructors": [
@@ -43,10 +43,10 @@
         "uws"
       ],
       "specialties": [
-        "beginners",
         "pregnancy",
         "back",
-        "injury"
+        "injury",
+        "beginners"
       ],
       "yearsLabel": "11 years teaching",
       "certification": "BASI Comprehensive Certification; Pre and Postnatal Pilates training",
@@ -76,9 +76,9 @@
         "park-slope"
       ],
       "specialties": [
-        "older-adults",
         "back",
         "injury",
+        "older-adults",
         "neuro"
       ],
       "yearsLabel": "21 years teaching",
@@ -93,8 +93,8 @@
         "uws"
       ],
       "specialties": [
-        "teens",
-        "strength"
+        "strength",
+        "teens"
       ],
       "yearsLabel": "2+ years teaching",
       "certification": "Club Pilates 500 hr Comprehensive",
@@ -124,8 +124,8 @@
         "park-slope"
       ],
       "specialties": [
-        "strength",
-        "injury"
+        "injury",
+        "strength"
       ],
       "yearsLabel": "8 years teaching",
       "certification": "Power Pilates Comprehensive",
@@ -155,8 +155,8 @@
       ],
       "specialties": [
         "back",
-        "older-adults",
-        "injury"
+        "injury",
+        "older-adults"
       ],
       "yearsLabel": "13 years teaching",
       "certification": "Kane School of Core Integration",
