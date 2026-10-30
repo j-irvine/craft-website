@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findMismatches } from '../src/arketa'
+import { cardIssues, findMismatches } from '../src/arketa'
 import { EMPTY_STATE, nextAlerts } from '../src/alerts'
 import { ARKETA_SERVICES } from '../src/instructors'
 
@@ -35,6 +35,17 @@ describe('findMismatches', () => {
   })
 })
 
+describe('cardIssues', () => {
+  it('flags no photo and no tags, and skips photos it could not read', () => {
+    const people = [
+      { name: 'Ana', photo: null, specialties: [] },
+      { name: 'Bea', photo: '/photos/x.jpg', specialties: ['teens'] },
+    ]
+    expect(cardIssues(people, true).map((m) => m.key)).toEqual(['photo:Ana', 'tags:Ana'])
+    expect(cardIssues(people, false).map((m) => m.key)).toEqual(['tags:Ana'])
+  })
+})
+
 describe('nextAlerts', () => {
   const m = [{ key: 'a', name: 'Alex', message: 'Alex is set up in Arketa for Park Slope privates but not duets.' }]
   const t = (iso: string) => new Date(iso)
@@ -44,7 +55,7 @@ describe('nextAlerts', () => {
     expect(first.email).toBeNull()
     expect(nextAlerts(first.state, m, false, t('2026-10-30T14:30:00Z')).email).toBeNull()
     const sent = nextAlerts(first.state, m, false, t('2026-10-30T15:00:00Z'))
-    expect(sent.email?.subject).toBe('Please fix: privates booking for Alex')
+    expect(sent.email?.subject).toBe('Please fix: website privates for Alex')
     expect(sent.email?.text).toContain('- Alex is set up in Arketa for Park Slope privates but not duets.')
     expect(nextAlerts(sent.state, m, false, t('2026-10-30T16:00:00Z')).email).toBeNull()
   })
@@ -62,7 +73,7 @@ describe('nextAlerts', () => {
     // Monday 2 Nov, 8:55 am and 9:05 am in New York (EST).
     expect(nextAlerts(sent.state, m, false, t('2026-11-02T13:55:00Z')).email).toBeNull()
     const reminder = nextAlerts(sent.state, m, false, t('2026-11-02T14:05:00Z'))
-    expect(reminder.email?.text).toContain("don't match Arketa")
+    expect(reminder.email?.text).toContain("need fixing")
     expect(nextAlerts(reminder.state, m, false, t('2026-11-02T14:10:00Z')).email).toBeNull()
   })
 
@@ -76,7 +87,12 @@ describe('nextAlerts', () => {
   it('names up to three people in the subject', () => {
     const many = ['Alex', 'Alyssa', 'Julianna', 'Katie', 'Lydia'].map((name) => ({ key: name, name, message: `${name} …` }))
     const sent = nextAlerts(EMPTY_STATE, many, false, t('2026-10-30T14:00:00Z'), true, true)
-    expect(sent.email?.subject).toBe('Please fix: privates booking for Alex, Alyssa, Julianna and 2 others')
+    expect(sent.email?.subject).toBe('Please fix: website privates for Alex, Alyssa, Julianna and 2 others')
+  })
+
+  it('keeps open ones this run could not check', () => {
+    const first = nextAlerts(EMPTY_STATE, m, false, t('2026-10-30T14:00:00Z'))
+    expect(Object.keys(nextAlerts(first.state, [], false, t('2026-10-30T14:05:00Z'), true, false, (k) => k === 'a').state.open)).toEqual(['a'])
   })
 
   it("keeps everything for later when it can't send", () => {

@@ -114,3 +114,20 @@ export function findMismatches(
   }
   return out
 }
+
+/**
+ * Cards that need something from staff (owners, 30 Oct 2026): no photo in the folder, or no specialty
+ * tags. Emailed with the mismatches above. Photos are skipped when they couldn't be read this run.
+ */
+export function cardIssues(instructors: { name: string; photo: string | null; specialties: unknown[] }[], photosRead: boolean): Mismatch[] {
+  const out: Mismatch[] = []
+  for (const i of instructors) {
+    if (photosRead && !i.photo) {
+      out.push({ key: `photo:${i.name}`, name: i.name, message: `${i.name} has no photo in the website photos folder, so the card shows the placeholder.` })
+    }
+    if (!i.specialties.length) {
+      out.push({ key: `tags:${i.name}`, name: i.name, message: `${i.name} has no specialty tags (no client area marked "taught a few", "substantial experience" or "completed training" in the form), so ${i.name} doesn't show under any filter.` })
+    }
+  }
+  return out
+}

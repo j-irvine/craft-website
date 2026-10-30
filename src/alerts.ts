@@ -36,9 +36,10 @@ export interface Email {
 /**
  * The next state and the email to send now, if any. `readFailed` is whether this run couldn't read Arketa
  * (the mismatches then come from the last good copy). `canSend` false only tracks them. `sendNow` sends the
- * full list at once, like the Monday reminder, even when nothing is open (staff asked for it from GitHub). Mondays from 9 am New York time count for the reminder.
+ * full list at once, like the Monday reminder, even when nothing is open (staff asked for it from GitHub).
+ * `keep` holds open ones this run couldn't check (photos, when the folder couldn't be read). Mondays from 9 am New York time count for the reminder.
  */
-export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed: boolean, now: Date, canSend = true, sendNow = false): { state: AlertState; email: Email | null } {
+export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed: boolean, now: Date, canSend = true, sendNow = false, keep: (key: string) => boolean = () => false): { state: AlertState; email: Email | null } {
   const at = now.toISOString()
   const next: AlertState = { ...state, open: { ...state.open } }
   if (readFailed) {
@@ -48,7 +49,7 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
     next.readFailureEmailed = false
   }
   const current = new Set(mismatches.map((m) => m.key))
-  for (const key of Object.keys(next.open)) if (!current.has(key)) delete next.open[key]
+  for (const key of Object.keys(next.open)) if (!current.has(key) && !keep(key)) delete next.open[key]
   // Wording can change while one stays open; when it started and whether it was emailed don't.
   for (const m of mismatches) next.open[m.key] = { ...(next.open[m.key] ?? { since: at, emailed: false }), name: m.name, message: m.message }
 
@@ -96,20 +97,20 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
 }
 
 const FOOTER = [
-  "Each of these is usually a mistake, either in the instructor sheet (privates answer, locations, Hide from website) or in which Private and Duet services the instructor is on in Arketa. Once the two agree, it drops off this list by itself.",
+  "Each of these is usually a mistake, either in the instructor sheet (privates answer, locations, Hide from website) or in which Private and Duet services the instructor is on in Arketa. Photos go in the website photos folder, named by the instructor's full name or form email. Once it's fixed, it drops off this list by itself.",
   '',
   'Someone at a studio on the website who has no Arketa calendar there gets a message to email hello@craftpilates.com instead of a booking calendar.',
 ].join('\n')
 
-const INTRO = "These instructors' privates on craftpilates.com don't match Arketa. Each one needs fixing in the instructor sheet or in Arketa:"
+const INTRO = "These instructors' privates on craftpilates.com need fixing, in the instructor sheet, the photos folder or Arketa:"
 
-/** "Please fix: privates booking for Alex, Alyssa, Julianna and 11 others", so it reads as a to-do, not a newsletter. */
+/** "Please fix: website privates for Alex, Alyssa, Julianna and 11 others", so it reads as a to-do, not a newsletter. */
 function subjectFor(items: Open[]): string {
   const names = [...new Set(items.map((o) => o.name).filter((n): n is string => Boolean(n)))]
   const shown = names.slice(0, 3)
   const others = names.length - shown.length
   const who = !shown.length ? `${items.length} instructors` : others > 0 ? `${shown.join(', ')} and ${others} ${others === 1 ? 'other' : 'others'}` : shown.length > 1 ? `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)}` : shown[0]
-  return `Please fix: privates booking for ${who}`
+  return `Please fix: website privates for ${who}`
 }
 
 function isMondayMorning(now: Date): boolean {

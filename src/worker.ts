@@ -4,7 +4,7 @@
 import { WIDGET_JS } from './generated/widget'
 import { arketaBookingUrl, arketaSessions, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
-import { fetchServiceHosts, findMismatches, offeredTypes, type HostNames, type ServiceHosts } from './arketa'
+import { cardIssues, fetchServiceHosts, findMismatches, offeredTypes, type HostNames, type ServiceHosts } from './arketa'
 import { EMPTY_STATE, nextAlerts, sendEmail, type AlertState } from './alerts'
 import { syncPhotos, type PhotoCounts } from './photos'
 import { previewPage } from './preview'
@@ -93,7 +93,8 @@ export async function refresh(env: Env): Promise<void> {
     if (!same) await env.DATA.put('instructors', JSON.stringify({ ...result, updatedAt: new Date().toISOString() } satisfies Stored))
     step('alerts')
     const mismatches = findMismatches(result.instructors, mergedHosts, mergedNames)
-    await alertStaff(env, mismatches, arketaErrors.length > 0)
+    const photosRead = Boolean(env.PHOTOS_FOLDER_ID) && photoErrors.length === 0
+    await alertStaff(env, [...mismatches, ...cardIssues(result.instructors, photosRead)], arketaErrors.length > 0, photosRead)
     await env.DATA.put('status', JSON.stringify({ ...status, mismatches: mismatches.length, lastError: null, lastRun: { ...run, step: 'done', finishedAt: new Date().toISOString(), photos: photoCounts } }))
   } catch (e) {
     const at = new Date().toISOString()
@@ -103,12 +104,12 @@ export async function refresh(env: Env): Promise<void> {
 }
 
 /** Emails staff about disagreements between the sheet and Arketa (src/alerts.ts). Never fails the run. */
-async function alertStaff(env: Env, mismatches: ReturnType<typeof findMismatches>, readFailed: boolean) {
+async function alertStaff(env: Env, mismatches: ReturnType<typeof findMismatches>, readFailed: boolean, photosRead: boolean) {
   try {
     const previous = (await env.DATA.get<AlertState>('alerts', 'json')) ?? EMPTY_STATE
     // Put there by the "Send alerts now" GitHub action, for the whole list at once.
     const sendNow = (await env.DATA.get('alerts:send-now')) !== null
-    const { state, email } = nextAlerts(previous, mismatches, readFailed, new Date(), Boolean(env.RESEND_API_KEY && env.ALERT_EMAIL), sendNow)
+    const { state, email } = nextAlerts(previous, mismatches, readFailed, new Date(), Boolean(env.RESEND_API_KEY && env.ALERT_EMAIL), sendNow, (key) => !photosRead && key.startsWith('photo:'))
     // Saved only once the email is sent, so a failed send is tried again next run.
     if (email) await sendEmail(env.RESEND_API_KEY!, env.ALERT_EMAIL!, email)
     if (JSON.stringify(state) !== JSON.stringify(previous)) await env.DATA.put('alerts', JSON.stringify(state))
