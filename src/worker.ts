@@ -6,6 +6,7 @@ import { buildInstructors, candidateEmails, photoNames, forLocation, photoLinks,
 import { parseServiceAccount, readSheet } from './google'
 import { syncPhotos, type PhotoCounts } from './photos'
 import { previewPage } from './preview'
+import PLACEHOLDER from '../assets/placeholder.jpg'
 
 export interface Env {
   DATA: KVNamespace
@@ -100,6 +101,11 @@ export default {
       return new Response(data, {
         headers: { 'content-type': 'font/woff2', 'cache-control': 'public, max-age=31536000', 'access-control-allow-origin': '*' },
       })
+    }
+
+    // Cards without a photo yet (owners' choice, Oct 30: the studio's socks shot).
+    if (url.pathname === '/placeholder.jpg') {
+      return new Response(PLACEHOLDER, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=86400' } })
     }
 
     const photo = /^\/photos\/([0-9a-f]{12}-[\w-]{1,40}\.jpg)$/.exec(url.pathname)
