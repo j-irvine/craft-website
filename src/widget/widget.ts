@@ -38,6 +38,9 @@ class FindYourPerson extends HTMLElement {
   private data: Data | null = null
   private filter: string | null = null
   private open = new Set<string>()
+  /** Cards whose full tag list is showing ("+N more" pressed). */
+  private allTags = new Set<string>()
+  private resize: ResizeObserver | undefined
   private toastTimer: ReturnType<typeof setTimeout> | undefined
 
   connectedCallback() {
@@ -82,12 +85,15 @@ class FindYourPerson extends HTMLElement {
         .map((k) => `<li class="${k === this.filter ? 'on' : ''}">${esc(labels.get(k) ?? k)}</li>`)
         .join('')
       const isOpen = this.open.has(i.id)
-      return `<article class="card${isOpen ? ' open' : ''}" data-id="${esc(i.id)}">
+      const allTags = this.allTags.has(i.id)
+      // "Show fewer" only when the full list was opened with "+N more"; "More about" shows every tag too.
+      const fewer = allTags && !isOpen ? `<li class="tags-toggle"><button type="button" aria-expanded="true">Show fewer</button></li>` : ''
+      return `<article class="card${isOpen ? ' open' : ''}${allTags ? ' all-tags' : ''}" data-id="${esc(i.id)}">
         <div class="photo">${photo}</div>
         <div class="body">
           <h3>${esc(i.name)}</h3>
           ${i.yearsLabel ? `<p class="years">${esc(i.yearsLabel)}</p>` : ''}
-          ${tags ? `<ul class="tags">${tags}</ul>` : ''}
+          ${tags ? `<ul class="tags">${tags}${fewer}</ul>` : ''}
           ${i.bio ? `<p class="bio">${esc(i.bio)}</p>` : ''}
           ${i.certification ? `<div class="cert"><p class="label">Certification</p><p>${esc(i.certification)}</p></div>` : ''}
           ${i.certification || i.bio ? `<button class="more" type="button" aria-expanded="${isOpen}">${isOpen ? 'Less' : `More about ${esc(i.name)}`}</button>` : ''}
@@ -126,6 +132,17 @@ class FindYourPerson extends HTMLElement {
         this.track().scrollLeft = left
       }),
     )
+    // "+N more" and "Show fewer" (added by fitTags) open and close one card's full tag list.
+    this.root.querySelectorAll<HTMLElement>('.tags').forEach((ul) =>
+      ul.addEventListener('click', (e) => {
+        if (!(e.target as HTMLElement).closest('.tags-toggle')) return
+        const id = ul.closest<HTMLElement>('.card')!.dataset.id!
+        this.allTags.has(id) ? this.allTags.delete(id) : this.allTags.add(id)
+        const left = this.track().scrollLeft
+        this.render()
+        this.track().scrollLeft = left
+      }),
+    )
     this.root.querySelectorAll<HTMLButtonElement>('.book').forEach((b) =>
       b.addEventListener('click', () => this.book(d.instructors.find((i) => i.id === b.dataset.book)!)),
     )
@@ -133,7 +150,46 @@ class FindYourPerson extends HTMLElement {
     this.root.querySelector('.prev')!.addEventListener('click', () => this.track().scrollBy({ left: -step(), behavior: 'smooth' }))
     this.root.querySelector('.next')!.addEventListener('click', () => this.track().scrollBy({ left: step(), behavior: 'smooth' }))
     this.track().addEventListener('scroll', () => this.updateNav(), { passive: true })
-    requestAnimationFrame(() => this.updateNav())
+    requestAnimationFrame(() => {
+      this.updateNav()
+      this.fitTags()
+    })
+    // Tags wrap differently once the brand fonts arrive and when the Showit box changes width.
+    void document.fonts?.ready.then(() => this.fitTags())
+    if (!this.resize && typeof ResizeObserver !== 'undefined') {
+      let width = 0
+      this.resize = new ResizeObserver(([entry]) => {
+        if (Math.abs(entry.contentRect.width - width) < 1) return
+        width = entry.contentRect.width
+        this.fitTags()
+      })
+      this.resize.observe(this)
+    }
+  }
+
+  /**
+   * Closed cards show 3 lines of tags (owners, Oct 30). Where more don't fit, the last ones are hidden
+   * behind a "+N more" tag that opens the full list.
+   */
+  private fitTags() {
+    this.root.querySelectorAll<HTMLElement>('.card:not(.open):not(.all-tags) .tags').forEach((ul) => {
+      ul.querySelector('.tags-toggle')?.remove()
+      const items = [...ul.querySelectorAll<HTMLElement>('li')]
+      items.forEach((li) => (li.hidden = false))
+      const fits = () => ul.scrollHeight <= ul.clientHeight + 1
+      if (fits()) return
+      const more = document.createElement('li')
+      more.className = 'tags-toggle'
+      more.innerHTML = '<button type="button" aria-expanded="false"></button>'
+      ul.append(more)
+      let hidden = 0
+      for (let n = items.length - 1; n > 0; n--) {
+        items[n].hidden = true
+        hidden++
+        more.querySelector('button')!.textContent = `+${hidden} more`
+        if (fits()) break
+      }
+    })
   }
 
   /** The studio photo shown until an instructor has their own (data-placeholder overrides, for previews). */
