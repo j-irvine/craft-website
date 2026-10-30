@@ -16,13 +16,13 @@ export const CSS = `
   --font-sub: 'Craft Trio Grotesk', 'Trio Grotesk', 'Epilogue', system-ui, sans-serif;
   --font-body: 'Epilogue', system-ui, sans-serif;
 
-  /* Cream section (default; owners, 29 Oct 2026): chocolate text, cards a shade deeper so they read as panels. */
-  --text: var(--chocolate);
-  --muted: color-mix(in srgb, var(--chocolate) 70%, var(--cream));
-  --chip-line: color-mix(in srgb, var(--chocolate) 45%, transparent);
-  --chip-on-bg: var(--chocolate);
-  --chip-on-text: var(--cream);
-  --card: color-mix(in srgb, var(--chocolate) 7%, var(--cream));
+  /* Chocolate section (default: the privates pages' background; owners, 30 Oct 2026): cream text, cream cards. */
+  --text: var(--cream);
+  --muted: color-mix(in srgb, var(--cream) 72%, var(--chocolate));
+  --chip-line: color-mix(in srgb, var(--cream) 55%, transparent);
+  --chip-on-bg: var(--cream);
+  --chip-on-text: var(--chocolate);
+  --card: var(--cream);
   --card-text: var(--chocolate);
   --name: var(--terracotta);
   --years: var(--forest);
@@ -40,14 +40,14 @@ export const CSS = `
   color: var(--text);
   font-family: var(--font-body);
 }
-/* Chocolate section: cream text, cream cards. */
-:host([data-theme='chocolate']) {
-  --text: var(--cream);
-  --muted: color-mix(in srgb, var(--cream) 72%, var(--chocolate));
-  --chip-line: color-mix(in srgb, var(--cream) 55%, transparent);
-  --chip-on-bg: var(--cream);
-  --chip-on-text: var(--chocolate);
-  --card: var(--cream);
+/* Cream section: chocolate text, cards a shade deeper so they read as panels. */
+:host([data-theme='cream']) {
+  --text: var(--chocolate);
+  --muted: color-mix(in srgb, var(--chocolate) 70%, var(--cream));
+  --chip-line: color-mix(in srgb, var(--chocolate) 45%, transparent);
+  --chip-on-bg: var(--chocolate);
+  --chip-on-text: var(--cream);
+  --card: color-mix(in srgb, var(--chocolate) 7%, var(--cream));
 }
 /* Forest section: cream text, cream cards, mint highlights. */
 :host([data-theme='forest']) {
