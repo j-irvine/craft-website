@@ -7,6 +7,8 @@
   "vars": { "SHEET_TAB": "Form Responses 1" },
   // Create with: npx wrangler@4 kv namespace create DATA, then paste its id here.
   "kv_namespaces": [{ "binding": "DATA", "id": "REPLACE_WITH_KV_ID" }],
+  // assets/placeholder.jpg is bundled into the Worker as bytes.
+  "rules": [{ "type": "Data", "globs": ["**/*.jpg"], "fallthrough": false }],
   "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true }
 }

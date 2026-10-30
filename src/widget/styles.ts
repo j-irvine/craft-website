@@ -32,9 +32,7 @@ export const CSS = `
   --cta-hover: var(--terracotta);
   --nav: var(--chocolate);
   --nav-text: var(--cream);
-  --mark-bg: var(--forest);
-  --mark-1: var(--mint);
-  --mark-2: var(--peach);
+  --photo-bg: var(--forest);
 
   display: block;
   height: 100%;
@@ -59,9 +57,6 @@ export const CSS = `
   --muted: color-mix(in srgb, var(--cream) 75%, var(--forest));
   --chip-on-bg: var(--mint);
   --chip-on-text: var(--forest);
-  --mark-bg: var(--sage);
-  --mark-1: var(--forest);
-  --mark-2: var(--cream);
 }
 * { box-sizing: border-box; }
 .fyp { container-type: inline-size; height: 100%; display: flex; flex-direction: column; gap: 16px; position: relative; }
@@ -97,10 +92,10 @@ export const CSS = `
   flex: 0 0 264px; scroll-snap-align: start; display: flex; flex-direction: column;
   background: var(--card); color: var(--card-text); border-radius: 0; overflow: hidden;
 }
-.photo { flex: 1 1 auto; min-height: 120px; position: relative; background: var(--mark-bg); }
+.photo { flex: 1 1 auto; min-height: 120px; position: relative; background: var(--photo-bg); }
 .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
-.placeholder { position: absolute; inset: 0; display: grid; place-items: center; }
-.placeholder svg { width: 58%; max-height: 80%; }
+/* The socks shot: keep the socks in view however the card crops it. */
+.photo img.placeholder { object-position: 60% 4%; }
 .body { flex: none; height: 252px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
 h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .years { margin: 0; font: 700 10px/1.2 var(--font-sub); letter-spacing: .14em; text-transform: uppercase; color: var(--years); }
@@ -125,7 +120,6 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 
 /* "More about": the details take the card, the photo shrinks to a strip. */
 .card.open .photo { flex: 0 0 64px; min-height: 64px; }
-.card.open .placeholder svg { width: auto; height: 80%; }
 .card.open .body { flex: 1 1 auto; height: auto; min-height: 0; overflow-y: auto; }
 .card.open .tags { max-height: none; }
 .card.open .cert, .card.open .bio { display: block; -webkit-line-clamp: unset; }

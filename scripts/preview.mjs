@@ -18,7 +18,8 @@ const dataFor = (l) => ({
 })
 const attr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 // The widget mounts after its own <script>, so inline copies need it as a separate element.
-const tag = (l) => `<craft-find-your-person data-location="${l}" data-fonts="none" data-json="${attr(JSON.stringify(dataFor(l)))}"></craft-find-your-person>`
+const placeholder = `data:image/jpeg;base64,${readFileSync('assets/placeholder.jpg').toString('base64')}`
+const tag = (l) => `<craft-find-your-person data-location="${l}" data-fonts="none" data-placeholder="${placeholder}" data-json="${attr(JSON.stringify(dataFor(l)))}"></craft-find-your-person>`
 // The brand fonts, inlined from a Craft Apps checkout (FONT_DIR=<studio-app>/brand/fonts/Type).
 // Without it the preview falls back to Epilogue.
 const fontDir = process.env.FONT_DIR

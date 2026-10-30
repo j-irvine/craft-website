@@ -3,7 +3,6 @@
 // The script puts a <craft-find-your-person> right where it sits, filling the Showit embed box.
 // Everything renders in a shadow root so the Showit page's styles and ours never collide.
 
-import { MARK_SVG } from './mark'
 import { CSS, EPILOGUE, fontFaces } from './styles'
 
 interface Specialty {
@@ -78,7 +77,7 @@ class FindYourPerson extends HTMLElement {
     const card = (i: Instructor) => {
       const photo = i.photo
         ? `<img src="${esc(new URL(i.photo, this.getAttribute('data-api') || location.href).href)}" alt="" loading="lazy">`
-        : `<div class="placeholder">${MARK_SVG}</div>`
+        : `<img class="placeholder" src="${esc(this.placeholder())}" alt="" loading="lazy">`
       const tags = i.specialties
         .map((k) => `<li class="${k === this.filter ? 'on' : ''}">${esc(labels.get(k) ?? k)}</li>`)
         .join('')
@@ -136,6 +135,11 @@ class FindYourPerson extends HTMLElement {
     this.root.querySelector('.next')!.addEventListener('click', () => this.track().scrollBy({ left: step(), behavior: 'smooth' }))
     this.track().addEventListener('scroll', () => this.updateNav(), { passive: true })
     requestAnimationFrame(() => this.updateNav())
+  }
+
+  /** The studio photo shown until an instructor has their own (data-placeholder overrides, for previews). */
+  private placeholder() {
+    return this.getAttribute('data-placeholder') ?? new URL('/placeholder.jpg', this.getAttribute('data-api') || location.href).href
   }
 
   private track() {
