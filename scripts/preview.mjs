@@ -4,22 +4,28 @@ import { build } from 'esbuild'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 
 const location = process.argv[2] ?? 'park-slope'
+// PANEL=1: "Book with" opens Arketa's booking for the instructor over the page.
+const panel = Boolean(process.env.PANEL)
 const bundle = async (entry, format) =>
   (await build({ entryPoints: [entry], bundle: true, format, target: 'es2020', write: false, minify: format === 'iife' })).outputFiles[0].text
 const widget = await bundle('src/widget/widget.ts', 'iife')
 const previewModule = await bundle('src/preview.ts', 'esm')
 const { previewPage } = await import(`data:text/javascript;base64,${Buffer.from(previewModule).toString('base64')}`)
+const { arketaBookingUrl } = await import(`data:text/javascript;base64,${Buffer.from(await bundle('src/instructors.ts', 'esm')).toString('base64')}`)
 
 const sample = JSON.parse(readFileSync('preview/sample.json', 'utf8'))
 const dataFor = (l) => ({
   ...sample,
   location: l === 'uws' ? 'Upper West Side' : 'Park Slope',
-  instructors: sample.instructors.filter((i) => i.locations.includes(l)).map(({ locations, ...i }) => i),
+  booking: arketaBookingUrl(l, null),
+  instructors: sample.instructors
+    .filter((i) => i.locations.includes(l))
+    .map(({ locations, arketaHost, ...i }) => ({ ...i, booking: arketaHost ? arketaBookingUrl(l, arketaHost) : null })),
 })
 const attr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 // The widget mounts after its own <script>, so inline copies need it as a separate element.
 const placeholder = `data:image/jpeg;base64,${readFileSync('assets/placeholder.jpg').toString('base64')}`
-const tag = (l) => `<craft-find-your-person data-location="${l}" data-fonts="none" data-placeholder="${placeholder}" data-json="${attr(JSON.stringify(dataFor(l)))}"></craft-find-your-person>`
+const tag = (l) => `<craft-find-your-person data-location="${l}"${panel ? ' data-booking="panel"' : ''} data-fonts="none" data-placeholder="${placeholder}" data-json="${attr(JSON.stringify(dataFor(l)))}"></craft-find-your-person>`
 // The brand fonts, inlined from a Craft Apps checkout (FONT_DIR=<studio-app>/brand/fonts/Type).
 // Without it the preview falls back to Epilogue.
 const fontDir = process.env.FONT_DIR
@@ -28,11 +34,12 @@ const face = (family, weight, file) =>
 const head = fontDir
   ? `<style>${face('Craft KK Topo', 400, `${fontDir}/KK-Topo/KK-Topo-Regular.woff2`)}\n${face('Craft Trio Grotesk', 700, `${fontDir}/Trio Grotesk/Web/TrioGrotesk-Bold.woff2`)}</style>`
   : ''
-let html = previewPage(location, '', tag, head)
+let html = previewPage(location, '', tag, head, panel)
 html = html.replace('</body>', `<script>${widget.replace(/<\/script/gi, '<\\/script')}</script></body>`)
 mkdirSync('dist', { recursive: true })
-writeFileSync(`dist/preview-${location}.html`, html)
-console.log(`dist/preview-${location}.html`)
+const suffix = panel ? '-panel' : ''
+writeFileSync(`dist/preview-${location}${suffix}.html`, html)
+console.log(`dist/preview-${location}${suffix}.html`)
 
 // The same page as a claude.ai Artifact body (it supplies the document skeleton itself).
 const artifact = html
@@ -40,4 +47,4 @@ const artifact = html
   .replace(/<meta charset="utf-8"><meta name="viewport"[^>]*>/, '')
   .replace('</head><body>', '')
   .replace('</body></html>', '')
-writeFileSync(`dist/artifact-${location}.html`, artifact)
+writeFileSync(`dist/artifact-${location}${suffix}.html`, artifact)

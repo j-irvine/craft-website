@@ -4,6 +4,7 @@
 // Everything renders in a shadow root so the Showit page's styles and ours never collide.
 
 import { CSS, EPILOGUE, fontFaces } from './styles'
+import { openBooking } from './panel'
 
 interface Specialty {
   key: string
@@ -18,18 +19,29 @@ interface Instructor {
   certification: string | null
   bio: string | null
   photo: string | null
+  /** Arketa's booking page with only their times at this studio, once staff add their link to the sheet. */
+  booking?: string | null
 }
 
 interface Data {
   location: string
   specialties: Specialty[]
   instructors: Instructor[]
+  /** Arketa's booking page for any instructor at this studio. */
+  booking?: string
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 // The booking button scrolls down to the page's booking calendar, so its arrow points down.
 const DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-6-6l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>'
+
+/**
+ * What "Book with [name]" does: "scroll" goes down to the page's Arketa calendar (owners, 29 Oct 2026);
+ * "panel" opens Arketa's booking for that instructor at this studio, privates and duets, over the page.
+ * The snippet's data-booking picks one, so the panel can be tried before it becomes the default.
+ */
+const DEFAULT_BOOKING: 'scroll' | 'panel' = 'scroll'
 
 const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
@@ -77,6 +89,17 @@ class FindYourPerson extends HTMLElement {
     const chip = (key: string | null, label: string) =>
       `<button class="chip" type="button" data-filter="${key ?? ''}" aria-pressed="${this.filter === key}">${esc(label)}</button>`
 
+    const panel = this.bookingMode() === 'panel' && Boolean(d.booking)
+    // Last in the row: for clients who'd rather pick a time than a person.
+    const anyone = panel
+      ? `<article class="card any">
+          <div class="body">
+            <h3>Not sure who?</h3>
+            <p class="bio">Pick a time for a private or duet at ${esc(d.location)}, with any instructor.</p>
+            <button class="book" type="button" data-book=""><span>See all times</span>${ARROW}</button>
+          </div>
+        </article>`
+      : ''
     const card = (i: Instructor) => {
       const photo = i.photo
         ? `<img src="${esc(new URL(i.photo, this.getAttribute('data-api') || location.href).href)}" alt="" loading="lazy">`
@@ -97,7 +120,7 @@ class FindYourPerson extends HTMLElement {
           ${i.bio ? `<p class="bio">${esc(i.bio)}</p>` : ''}
           ${i.certification ? `<div class="cert"><p class="label">Certification</p><p>${esc(i.certification)}</p></div>` : ''}
           ${i.certification || i.bio ? `<button class="more" type="button" aria-expanded="${isOpen}">${isOpen ? 'Less' : `More about ${esc(i.name)}`}</button>` : ''}
-          <button class="book" type="button" data-book="${esc(i.id)}"><span>Book with ${esc(i.name)}</span>${DOWN}</button>
+          <button class="book" type="button" data-book="${esc(i.id)}"><span>Book with ${esc(i.name)}</span>${panel ? ARROW : DOWN}</button>
         </div>
       </article>`
     }
@@ -110,7 +133,7 @@ class FindYourPerson extends HTMLElement {
       <div class="rail">
         <button class="nav prev" type="button" aria-label="Previous instructors">${ARROW}</button>
         <div class="track" tabindex="0" aria-label="Instructors">
-          ${shown.length ? shown.map(card).join('') : `<p class="note">No instructors match that yet.</p>`}
+          ${shown.length ? shown.map(card).join('') : `<p class="note">No instructors match that yet.</p>`}${anyone}
         </div>
         <button class="nav next" type="button" aria-label="More instructors">${ARROW}</button>
       </div>
@@ -144,7 +167,7 @@ class FindYourPerson extends HTMLElement {
       }),
     )
     this.root.querySelectorAll<HTMLButtonElement>('.book').forEach((b) =>
-      b.addEventListener('click', () => this.book(d.instructors.find((i) => i.id === b.dataset.book)!)),
+      b.addEventListener('click', () => this.book(d.instructors.find((i) => i.id === b.dataset.book) ?? null, b)),
     )
     const step = () => (this.track().querySelector('.card')?.clientWidth ?? 260) + 16
     this.root.querySelector('.prev')!.addEventListener('click', () => this.track().scrollBy({ left: -step(), behavior: 'smooth' }))
@@ -207,15 +230,29 @@ class FindYourPerson extends HTMLElement {
     this.root.querySelector<HTMLButtonElement>('.next')!.disabled = t.scrollLeft + t.clientWidth > t.scrollWidth - 4
   }
 
-  /**
-   * Arketa can't open one instructor's privates, so this scrolls to the page's booking calendar
-   * (owners, 29 Oct 2026) and says who to pick there.
-   */
-  private book(i: Instructor) {
+  private bookingMode(): 'scroll' | 'panel' {
+    const mode = this.getAttribute('data-booking')
+    return mode === 'panel' || mode === 'scroll' ? mode : DEFAULT_BOOKING
+  }
+
+  /** "Book with [name]", or "See all times" (no instructor). */
+  private book(i: Instructor | null, button: HTMLElement) {
+    const d = this.data!
+    if (this.bookingMode() === 'panel' && d.booking) {
+      if (!i) return openBooking('Book a private or duet', `Any instructor · ${d.location}`, d.booking, button)
+      // Until staff add their Arketa link to the sheet, the studio's page, where the client picks them.
+      if (i.booking) return openBooking(`Book with ${i.name}`, `Private or duet · ${d.location}`, i.booking, button)
+      return openBooking(`Book with ${i.name}`, `Choose ${i.name} as your instructor · ${d.location}`, d.booking, button)
+    }
+    this.scrollToCalendar(i)
+  }
+
+  /** Scrolls to the page's booking calendar and says who to pick there. */
+  private scrollToCalendar(i: Instructor | null) {
     const calendar = document.querySelector('[data-craft-booking], iframe[src*="arketa"]')
     calendar?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     const toast = this.root.querySelector('.toast') as HTMLElement
-    toast.textContent = `Choose ${i.name} in the booking calendar.`
+    toast.textContent = i ? `Choose ${i.name} in the booking calendar.` : 'Choose a time in the booking calendar.'
     toast.classList.add('show')
     clearTimeout(this.toastTimer)
     this.toastTimer = setTimeout(() => toast.classList.remove('show'), 5000)
@@ -248,5 +285,6 @@ if (script?.src) {
   el.setAttribute('data-api', new URL(script.src).origin)
   if (script.dataset.src) el.setAttribute('data-src', script.dataset.src)
   if (script.dataset.theme) el.setAttribute('data-theme', script.dataset.theme)
+  if (script.dataset.booking) el.setAttribute('data-booking', script.dataset.booking)
   script.after(el)
 }

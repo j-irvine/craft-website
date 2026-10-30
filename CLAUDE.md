@@ -86,7 +86,7 @@ Open decisions from the brief. Each has a proposal; none are confirmed yet. Upda
 | Field mapping from the form's columns | See **Instructor sheet mapping** below. | Specialty rule confirmed (Oct 29); chip wording to review before launch |
 | Photo matching | Support both: filename by form email (or full name, Oct 30) first, then a photo link column in the row. Pro shoot photos override both. | Confirmed (Oct 29) |
 | Short client-facing bio question | Yes, optional, 1–2 sentences, so cards aren't just tags. | Confirmed (Oct 29) |
-| Can Arketa filter privates by instructor? | Yes per Arketa's help center: each team member has a "Private availability" direct link and embed code (Staff → Team → ⋯ → Embed). "Book with [name]" can open that instructor's link, stored per instructor (e.g. a sheet column). Need to confirm the link covers privates and duets. Source: https://help.arketa.com/appointments/availability/share-calendar | Decided (Oct 29): "Book with [name]" only scrolls to the page's Arketa calendar and says to choose that instructor there. No per-instructor links. |
+| Can Arketa filter privates by instructor? | Yes per Arketa's help center: each team member has a "Private availability" direct link and embed code (Staff → Team → ⋯ → Embed). "Book with [name]" can open that instructor's link, stored per instructor (e.g. a sheet column). Need to confirm the link covers privates and duets. Source: https://help.arketa.com/appointments/availability/share-calendar | Decided (Oct 29): "Book with [name]" only scrolls to the page's Arketa calendar. Oct 30: owners asked for one embed, with each instructor's Arketa booking (privates and duets together) opening from the card. Checked live: `privates/by-service?host=<instructor>&location=<studio>` shows only that studio's Private/Duet and that instructor's times (`by-service/<service id>?host=` ignores the instructor). Built behind `data-booking="panel"` (PR #12); waiting on the owners' OK to make it the default and take the Arketa calendars off the Showit pages. |
 | Does the Showit plan support custom embed code? | Owners are on "Showit Annual". Showit's public docs don't tie the Embed Code element to a plan; confirm by checking the editor's add-element menu shows "Embed Code" (or the existing Arketa schedule embed on the site already proves it). | Likely yes, to confirm |
 
 ## How it's built
@@ -119,7 +119,7 @@ Sheet: the "Form Responses 1" tab of "Craft Pilates Instructor Questionnaire (Re
 
 **Never published:** equipment, "If you selected other", the three free-text answers about other conditions, additional training, and matching notes. These are staff-only.
 
-**Columns staff add to the sheet (right of the form columns):** Hide from website (checkbox), Photo link (only when the photo can't be matched by email).
+**Columns staff add to the sheet (right of the form columns):** Hide from website (checkbox), Photo link (only when the photo can't be matched by email), Arketa booking link (the instructor's "Private availability" link or embed code from Arketa: Staff → Team → ⋯ → Embed; until it's there, Book opens the studio's page).
 
 **Client areas → specialties.** Each of the 17 areas is a checkbox grid: Interested / Have taught a few / Have substantial experience / Completed relevant training / Have not taught yet. Rule (confirmed Oct 29): an instructor gets a specialty only with *substantial experience* or *completed training* in it ("interested" and "a few clients" don't count). Proposed grouping into 8 public chips so filters fit a fixed-height box:
 

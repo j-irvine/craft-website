@@ -1,0 +1,90 @@
+// The booking panel: Arketa's privates booking page for one instructor (or any instructor), over the page.
+// It's added to <body> rather than inside the Showit embed box, so it isn't cut to the box's size, and a
+// transformed Showit ancestor can't pin it to the box. Booking and payment happen inside Arketa's page.
+
+const CSS = `
+:host {
+  --chocolate: #352222;
+  --cream: #ffe5c8;
+  --terracotta: #b64726;
+  --forest: #485c3d;
+  position: fixed; inset: 0; z-index: 2147483000;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--chocolate) 72%, transparent);
+  font-family: 'Epilogue', system-ui, sans-serif;
+}
+.panel {
+  width: min(760px, calc(100vw - 48px)); height: min(900px, calc(100dvh - 48px));
+  display: flex; flex-direction: column; background: var(--cream); color: var(--chocolate);
+  box-shadow: 0 20px 60px rgb(0 0 0 / .35);
+}
+header { flex: none; display: flex; align-items: flex-start; gap: 12px; padding: 18px 18px 14px 22px; }
+.titles { flex: 1; min-width: 0; }
+h2 { margin: 0; font: 400 30px/1.05 'Craft KK Topo', 'KK Topo', 'Epilogue', system-ui, sans-serif; color: var(--terracotta); overflow-wrap: anywhere; }
+p { margin: 6px 0 0; font: 13px/1.4 'Epilogue', system-ui, sans-serif; }
+.close {
+  flex: none; width: 44px; height: 44px; border: 0; border-radius: 0; cursor: pointer;
+  background: var(--chocolate); color: var(--cream); display: grid; place-items: center;
+}
+.close:hover { background: var(--terracotta); }
+.close svg { width: 18px; height: 18px; }
+.frame { flex: 1; min-height: 0; position: relative; background: #fff; border-top: 1px solid color-mix(in srgb, var(--chocolate) 15%, transparent); }
+iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; font: 14px/1.4 'Epilogue', system-ui, sans-serif; color: var(--chocolate); }
+@media (max-width: 600px) {
+  :host { display: block; }
+  .panel { width: 100%; height: 100%; height: 100dvh; box-shadow: none; }
+  header { padding: max(14px, env(safe-area-inset-top, 0px)) 14px 12px 16px; }
+  h2 { font-size: 26px; }
+}
+`
+
+const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>'
+
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+
+let current: { host: HTMLElement; done: () => void } | null = null
+
+/** Opens the panel with Arketa's page at `url`. Esc, the × or a tap outside closes it, and focus goes back to `returnTo`. */
+export function openBooking(title: string, note: string, url: string, returnTo?: HTMLElement | null) {
+  current?.done()
+  const host = document.createElement('craft-booking-panel')
+  const root = host.attachShadow({ mode: 'open' })
+  root.innerHTML = `<style>${CSS}</style>
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="t">
+      <header>
+        <div class="titles"><h2 id="t">${esc(title)}</h2><p>${esc(note)}</p></div>
+        <button class="close" type="button" aria-label="Close">${CLOSE}</button>
+      </header>
+      <div class="frame">
+        <p class="loading">Loading times…</p>
+        <iframe title="${esc(title)}" src="${esc(url)}" allow="payment; fullscreen" allowfullscreen></iframe>
+      </div>
+    </div>`
+
+  // Keep the page behind from scrolling while the panel is open.
+  const html = document.documentElement
+  const overflow = html.style.overflow
+  html.style.overflow = 'hidden'
+
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') done()
+  }
+  const done = () => {
+    host.remove()
+    html.style.overflow = overflow
+    document.removeEventListener('keydown', onKey)
+    current = null
+    returnTo?.focus()
+  }
+  document.addEventListener('keydown', onKey)
+  root.querySelector('.close')!.addEventListener('click', done)
+  host.addEventListener('click', (e) => {
+    if (e.composedPath()[0] === host) done()
+  })
+  root.querySelector('iframe')!.addEventListener('load', () => root.querySelector('.loading')?.remove())
+
+  document.body.append(host)
+  current = { host, done }
+  root.querySelector<HTMLButtonElement>('.close')!.focus()
+}

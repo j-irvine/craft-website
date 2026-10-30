@@ -1,5 +1,5 @@
 {
-  "_note": "Made-up instructors for previews. Real instructor data never goes in this public repo.",
+  "_note": "Made-up instructors for previews. Real instructor data never goes in this public repo. The one arketaHost is a real instructor's public booking id, so the preview's Book opens real times.",
   "specialties": [
     {
       "key": "beginners",
@@ -51,7 +51,8 @@
       "yearsLabel": "11 years teaching",
       "certification": "BASI Comprehensive Certification; Pre and Postnatal Pilates training",
       "bio": "Calm, precise sessions that build strength around whatever your body is dealing with right now.",
-      "photo": null
+      "photo": null,
+      "arketaHost": "LtWx0pB3l0PROXKmxGCUpTcB4EA2"
     },
     {
       "id": "a2",
