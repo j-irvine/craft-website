@@ -16,12 +16,13 @@ export const CSS = `
   --font-sub: 'Craft Trio Grotesk', 'Trio Grotesk', 'Epilogue', system-ui, sans-serif;
   --font-body: 'Epilogue', system-ui, sans-serif;
 
-  /* Chocolate section (default: the privates pages' background; owners, 30 Oct 2026): cream text, cream cards. */
-  --text: var(--cream);
-  --muted: color-mix(in srgb, var(--cream) 72%, var(--chocolate));
-  --chip-line: color-mix(in srgb, var(--cream) 55%, transparent);
-  --chip-on-bg: var(--cream);
-  --chip-on-text: var(--chocolate);
+  /* Cream section (default: the privates pages' background, #fcf3e8; owners, 30 Oct 2026): chocolate text,
+     cards in the brand cream, a shade deeper than the page, and a chocolate "Any availability" card. */
+  --text: var(--chocolate);
+  --muted: color-mix(in srgb, var(--chocolate) 70%, var(--cream));
+  --chip-line: color-mix(in srgb, var(--chocolate) 45%, transparent);
+  --chip-on-bg: var(--chocolate);
+  --chip-on-text: var(--cream);
   --card: var(--cream);
   --card-text: var(--chocolate);
   --name: var(--terracotta);
@@ -33,11 +34,11 @@ export const CSS = `
   --nav: var(--chocolate);
   --nav-text: var(--cream);
   --photo-bg: var(--forest);
-  --any-bg: var(--cream);
-  --any-text: var(--chocolate);
-  --any-title: var(--terracotta);
-  --any-cta: var(--chocolate);
-  --any-cta-text: var(--cream);
+  --any-bg: var(--chocolate);
+  --any-text: var(--cream);
+  --any-title: var(--cream);
+  --any-cta: var(--cream);
+  --any-cta-text: var(--chocolate);
 
   display: block;
   height: 100%;
@@ -45,19 +46,18 @@ export const CSS = `
   color: var(--text);
   font-family: var(--font-body);
 }
-/* Cream section: chocolate text, cards a shade deeper so they read as panels. */
-:host([data-theme='cream']) {
-  --text: var(--chocolate);
-  --muted: color-mix(in srgb, var(--chocolate) 70%, var(--cream));
-  --chip-line: color-mix(in srgb, var(--chocolate) 45%, transparent);
-  --chip-on-bg: var(--chocolate);
-  --chip-on-text: var(--cream);
-  --card: color-mix(in srgb, var(--chocolate) 7%, var(--cream));
-  --any-bg: var(--chocolate);
-  --any-text: var(--cream);
-  --any-title: var(--cream);
-  --any-cta: var(--cream);
-  --any-cta-text: var(--chocolate);
+/* Chocolate section: cream text, cream cards, a cream "Any availability" card. */
+:host([data-theme='chocolate']) {
+  --text: var(--cream);
+  --muted: color-mix(in srgb, var(--cream) 72%, var(--chocolate));
+  --chip-line: color-mix(in srgb, var(--cream) 55%, transparent);
+  --chip-on-bg: var(--cream);
+  --chip-on-text: var(--chocolate);
+  --any-bg: var(--cream);
+  --any-text: var(--chocolate);
+  --any-title: var(--terracotta);
+  --any-cta: var(--chocolate);
+  --any-cta-text: var(--cream);
 }
 /* Forest section: cream text, cream cards, mint highlights. */
 :host([data-theme='forest']) {
