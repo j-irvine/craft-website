@@ -106,10 +106,13 @@ export async function refresh(env: Env): Promise<void> {
 async function alertStaff(env: Env, mismatches: ReturnType<typeof findMismatches>, readFailed: boolean) {
   try {
     const previous = (await env.DATA.get<AlertState>('alerts', 'json')) ?? EMPTY_STATE
-    const { state, email } = nextAlerts(previous, mismatches, readFailed, new Date(), Boolean(env.RESEND_API_KEY && env.ALERT_EMAIL))
+    // Put there by the "Send alerts now" GitHub action, for the whole list at once.
+    const sendNow = (await env.DATA.get('alerts:send-now')) !== null
+    const { state, email } = nextAlerts(previous, mismatches, readFailed, new Date(), Boolean(env.RESEND_API_KEY && env.ALERT_EMAIL), sendNow)
     // Saved only once the email is sent, so a failed send is tried again next run.
     if (email) await sendEmail(env.RESEND_API_KEY!, env.ALERT_EMAIL!, email)
     if (JSON.stringify(state) !== JSON.stringify(previous)) await env.DATA.put('alerts', JSON.stringify(state))
+    if (sendNow && email) await env.DATA.delete('alerts:send-now')
   } catch (e) {
     console.error('alerts', e)
   }
