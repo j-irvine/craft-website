@@ -4,11 +4,13 @@
 // "Photo link" covers photos the bot couldn't name by form email. Google resizes them (the Drive
 // thumbnail at PHOTO_SIZE px, always JPEG, so iPhone HEIC photos work); the card crops with CSS.
 
-import { accessToken, type ServiceAccount } from './google'
+import { accessToken, FETCH_TIMEOUT_MS, type ServiceAccount } from './google'
 import { instructorId } from './instructors'
 
 export const PHOTO_SIZE = 900
 const PRO_FOLDER = 'professional'
+/** New photos copied per run, so a big first batch is spread over a few runs instead of one long one. */
+export const DOWNLOADS_PER_RUN = 6
 
 export interface DriveFile {
   id: string
@@ -34,7 +36,10 @@ export function choosePhotos(pro: DriveFile[], emailed: DriveFile[], links: Map<
 }
 
 async function drive(token: string, path: string): Promise<Response> {
-  const res = await fetch(`https://www.googleapis.com/drive/v3/${path}`, { headers: { authorization: `Bearer ${token}` } })
+  const res = await fetch(`https://www.googleapis.com/drive/v3/${path}`, {
+    headers: { authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  })
   if (!res.ok) throw new Error(`Drive ${res.status}: ${(await res.text()).slice(0, 200)}`)
   return res
 }
@@ -55,8 +60,12 @@ async function listFolder(token: string, folderId: string): Promise<DriveFile[]>
 async function download(token: string, fileId: string): Promise<ArrayBuffer> {
   const meta = (await (await drive(token, `files/${fileId}?fields=thumbnailLink`)).json()) as { thumbnailLink?: string }
   if (meta.thumbnailLink) {
-    const res = await fetch(meta.thumbnailLink.replace(/=s\d+$/, `=s${PHOTO_SIZE}`), { headers: { authorization: `Bearer ${token}` } })
-    if (res.ok) return res.arrayBuffer()
+    const res = await fetch(meta.thumbnailLink.replace(/=s\d+$/, `=s${PHOTO_SIZE}`), {
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
+    if (res.ok && res.headers.get('content-type')?.startsWith('image/')) return res.arrayBuffer()
+    throw new Error(`Drive thumbnail ${res.status} (${res.headers.get('content-type')}) for file ${fileId}`)
   }
   // No thumbnail yet (Drive makes them shortly after upload): try again on the next run.
   throw new Error(`No thumbnail yet for Drive file ${fileId}`)
@@ -88,6 +97,7 @@ export async function syncPhotos(
 
   const photos = new Map<string, string>()
   const errors: string[] = []
+  let downloads = 0
   for (const email of emails) {
     const fileId = chosen.get(email)
     if (!fileId) continue
@@ -96,6 +106,10 @@ export async function syncPhotos(
     const meta = await kv.get<PhotoMeta>(metaKey, 'json')
     if (meta && meta.fileId === fileId && meta.md5 === md5) {
       photos.set(email, meta.path)
+      continue
+    }
+    if (downloads++ >= DOWNLOADS_PER_RUN) {
+      if (meta) photos.set(email, meta.path)
       continue
     }
     try {

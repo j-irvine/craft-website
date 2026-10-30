@@ -46,7 +46,12 @@ export async function refresh(env: Env): Promise<void> {
     let photos = new Map<string, string>()
     let photoErrors: string[] = []
     if (env.PHOTOS_FOLDER_ID) {
-      ;({ photos, errors: photoErrors } = await syncPhotos(env.DATA, sa, env.PHOTOS_FOLDER_ID, photoLinks(rows), candidateEmails(rows)))
+      // Photos never hold up the list: a failure here shows as a warning, and cards keep the placeholder.
+      try {
+        ;({ photos, errors: photoErrors } = await syncPhotos(env.DATA, sa, env.PHOTOS_FOLDER_ID, photoLinks(rows), candidateEmails(rows)))
+      } catch (e) {
+        photoErrors = [`Photos: ${String(e)}`]
+      }
     }
     const result = await buildInstructors(rows, photos)
     result.warnings.push(...photoErrors.map((message) => ({ row: 0, message })))

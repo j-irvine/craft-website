@@ -33,6 +33,9 @@ export function parseServiceAccount(json: string | undefined): ServiceAccount | 
 
 let cachedToken: { email: string; token: string; expiresAt: number } | null = null
 
+/** No call to Google may hang a cron run. */
+export const FETCH_TIMEOUT_MS = 20_000
+
 export async function accessToken(sa: ServiceAccount, now = Date.now()): Promise<string> {
   if (cachedToken && cachedToken.email === sa.client_email && cachedToken.expiresAt - 5 * 60_000 > now) return cachedToken.token
   const iat = Math.floor(now / 1000)
@@ -45,6 +48,7 @@ export async function accessToken(sa: ServiceAccount, now = Date.now()): Promise
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${unsigned}.${base64url(signature)}` }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
   if (!res.ok) throw new Error(`Google sign-in ${res.status}: ${(await res.text()).slice(0, 200)}`)
   const { access_token, expires_in } = (await res.json()) as { access_token: string; expires_in: number }
@@ -56,7 +60,7 @@ export async function accessToken(sa: ServiceAccount, now = Date.now()): Promise
 export async function readSheet(sa: ServiceAccount, sheetId: string, tab: string): Promise<string[][]> {
   const token = await accessToken(sa)
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}/values/${encodeURIComponent(`'${tab}'`)}`
-  const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } })
+  const res = await fetch(url, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
   if (!res.ok) throw new Error(`Sheets ${res.status}: ${(await res.text()).slice(0, 200)}`)
   const { values } = (await res.json()) as { values?: string[][] }
   return values ?? []
