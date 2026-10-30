@@ -68,7 +68,7 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
     const text = all.length
       ? [`Open right now (${all.length}):`, ...all.map((o) => `- ${o.message}`), '', FOOTER].join('\n')
       : 'Everyone on the website for privates matches Arketa at each studio, and everyone set up in Arketa is on the website.'
-    return { state: next, email: { subject: all.length ? subjectFor(all.length) : 'Find Your Person: the sheet and Arketa agree', text } }
+    return { state: next, email: { subject: all.length ? subjectFor(all.length) : 'Privates on the website: the instructor sheet and Arketa agree', text } }
   }
 
   const freshKeys = new Set(fresh.map(([key]) => key))
@@ -88,7 +88,7 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
   }
   const count = settled.length
   const subject = readProblem && !count
-    ? "Find Your Person: can't check Arketa"
+    ? "Privates on the website: can't check Arketa"
     : subjectFor(count)
   return { state: next, email: { subject, text: lines.join('\n').trim() } }
 }
@@ -99,7 +99,7 @@ const FOOTER = [
   'Someone at a studio on the website who has no Arketa calendar there gets a message to email hello@craftpilates.com instead of a booking calendar.',
 ].join('\n')
 
-const subjectFor = (count: number) => `Find Your Person: ${count} ${count === 1 ? 'thing' : 'things'} to check between the sheet and Arketa`
+const subjectFor = (count: number) => `Privates on the website: ${count} ${count === 1 ? 'instructor issue' : 'instructor issues'} to fix in the sheet or Arketa`
 
 function isMondayMorning(now: Date): boolean {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(now)

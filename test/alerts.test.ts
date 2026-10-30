@@ -43,7 +43,7 @@ describe('nextAlerts', () => {
     expect(first.email).toBeNull()
     expect(nextAlerts(first.state, m, false, t('2026-10-30T14:30:00Z')).email).toBeNull()
     const sent = nextAlerts(first.state, m, false, t('2026-10-30T15:00:00Z'))
-    expect(sent.email?.subject).toBe('Find Your Person: 1 thing to check between the sheet and Arketa')
+    expect(sent.email?.subject).toBe('Privates on the website: 1 instructor issue to fix in the sheet or Arketa')
     expect(sent.email?.text).toContain('- Alex is set up in Arketa for Park Slope privates but not duets.')
     expect(nextAlerts(sent.state, m, false, t('2026-10-30T16:00:00Z')).email).toBeNull()
   })
@@ -69,7 +69,7 @@ describe('nextAlerts', () => {
     const first = nextAlerts(EMPTY_STATE, m, false, t('2026-10-30T14:00:00Z'), true, true)
     expect(first.email?.text).toContain('Open right now (1):')
     expect(nextAlerts(first.state, m, false, t('2026-10-30T15:05:00Z')).email).toBeNull()
-    expect(nextAlerts(EMPTY_STATE, [], false, t('2026-10-30T14:00:00Z'), true, true).email?.subject).toBe('Find Your Person: the sheet and Arketa agree')
+    expect(nextAlerts(EMPTY_STATE, [], false, t('2026-10-30T14:00:00Z'), true, true).email?.subject).toBe('Privates on the website: the instructor sheet and Arketa agree')
   })
 
   it("keeps everything for later when it can't send", () => {
@@ -83,7 +83,7 @@ describe('nextAlerts', () => {
     const first = nextAlerts(EMPTY_STATE, [], true, t('2026-10-30T14:00:00Z'))
     expect(nextAlerts(first.state, [], true, t('2026-10-31T13:00:00Z')).email).toBeNull()
     const sent = nextAlerts(first.state, [], true, t('2026-10-31T14:00:00Z'))
-    expect(sent.email?.subject).toBe("Find Your Person: can't check Arketa")
+    expect(sent.email?.subject).toBe("Privates on the website: can't check Arketa")
     expect(nextAlerts(sent.state, [], true, t('2026-10-31T15:00:00Z')).email).toBeNull()
   })
 })
