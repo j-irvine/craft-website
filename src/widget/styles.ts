@@ -175,7 +175,15 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
   .chips::-webkit-scrollbar { display: none; }
   .chip { flex: none; }
   .card { flex-basis: 80%; }
-  .book { font-size: 10px; letter-spacing: .08em; gap: 6px; }
+  /* A more compact text area, so the photo gets more of the card (owners, Oct 30: "a little less card"). */
+  .body { padding: 12px 14px 14px; gap: 4px; }
+  h3 { font-size: 24px; }
+  .tags { margin-top: 2px; gap: 3px; max-height: 62px; }
+  .tags li, .tags-toggle button { font-size: 11px; }
+  .tags li { padding: 4px 6px; }
+  .tags-toggle button { padding: 3px 5px; }
+  .more { font-size: 11px; }
+  .book { min-height: 40px; font-size: 10px; letter-spacing: .08em; gap: 6px; }
   .book svg { width: 12px; height: 12px; }
   .nav { display: none; }
 }

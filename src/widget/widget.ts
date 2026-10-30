@@ -216,7 +216,8 @@ class FindYourPerson extends HTMLElement {
         b.style.height = 'auto'
         const book = b.querySelector<HTMLElement>('.book')
         if (book) book.style.marginTop = '10px'
-        const h = b.getBoundingClientRect().height
+        // Layout height, not getBoundingClientRect: Showit scales its mobile page with a transform, which that would include.
+        const h = b.offsetHeight
         b.style.height = ''
         if (book) book.style.marginTop = ''
         return h
