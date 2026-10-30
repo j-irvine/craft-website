@@ -69,6 +69,7 @@ One component, used on both privates pages, shows that location's instructors wi
 ## How we like to work
 
 - Nothing goes on the live site without a preview and our OK.
+- Until something launches on the website, Claude merges and deploys changes to the test Worker without asking (owners, Oct 30). Only putting a component on craftpilates.com (pasting a snippet into Showit) needs our OK.
 - We aren't web developers. Explain Showit steps plainly.
 - Keep the designer's look. Don't propose redesigning Showit pages.
 - Maayan should be able to manage instructors entirely from the sheet, without opening this project.
