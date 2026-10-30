@@ -26,6 +26,8 @@ interface Status {
   updatedAt: string | null
   lastError: string | null
   lastErrorAt: string | null
+  /** The latest run: when it started, the step it reached, and when it finished (null while running or if it was cut off). */
+  lastRun?: { startedAt: string; step: string; finishedAt: string | null }
 }
 
 const json = (body: unknown, maxAge = 60) =>
@@ -39,6 +41,14 @@ const json = (body: unknown, maxAge = 60) =>
 
 export async function refresh(env: Env): Promise<void> {
   const status: Status = (await env.DATA.get<Status>('status', 'json')) ?? { updatedAt: null, lastError: null, lastErrorAt: null }
+  // Each run says where it got to, so a run that's cut off shows on /api/status (the account is on
+  // Workers Paid, so these writes are well inside KV's limits).
+  const run = { startedAt: new Date().toISOString(), step: 'sheet', finishedAt: null as string | null }
+  await env.DATA.put('status', JSON.stringify({ ...status, lastRun: run }))
+  const step = async (name: string) => {
+    run.step = name
+    await env.DATA.put('status', JSON.stringify({ ...status, lastRun: run }))
+  }
   try {
     const sa = parseServiceAccount(env.GOOGLE_SERVICE_ACCOUNT)
     if (!sa) throw new Error('GOOGLE_SERVICE_ACCOUNT is missing or not a service account key')
@@ -46,6 +56,7 @@ export async function refresh(env: Env): Promise<void> {
     let photos = new Map<string, string>()
     let photoErrors: string[] = []
     if (env.PHOTOS_FOLDER_ID) {
+      await step('photos')
       // Photos never hold up the list: a failure here shows as a warning, and cards keep the placeholder.
       try {
         ;({ photos, errors: photoErrors } = await syncPhotos(env.DATA, sa, env.PHOTOS_FOLDER_ID, photoLinks(rows), candidateEmails(rows)))
@@ -53,15 +64,17 @@ export async function refresh(env: Env): Promise<void> {
         photoErrors = [`Photos: ${String(e)}`]
       }
     }
+    await step('list')
     const result = await buildInstructors(rows, photos)
     result.warnings.push(...photoErrors.map((message) => ({ row: 0, message })))
     // KV's free tier allows 1,000 writes a day; only write when something changed.
     const previous = await env.DATA.get<Stored>('instructors', 'json')
     const same = previous && JSON.stringify([previous.instructors, previous.warnings]) === JSON.stringify([result.instructors, result.warnings])
     if (!same) await env.DATA.put('instructors', JSON.stringify({ ...result, updatedAt: new Date().toISOString() } satisfies Stored))
-    if (status.lastError) await env.DATA.put('status', JSON.stringify({ ...status, lastError: null }))
+    await env.DATA.put('status', JSON.stringify({ ...status, lastError: null, lastRun: { ...run, step: 'done', finishedAt: new Date().toISOString() } }))
   } catch (e) {
-    await env.DATA.put('status', JSON.stringify({ ...status, lastError: String(e), lastErrorAt: new Date().toISOString() }))
+    const at = new Date().toISOString()
+    await env.DATA.put('status', JSON.stringify({ ...status, lastError: String(e), lastErrorAt: at, lastRun: { ...run, finishedAt: at } }))
     throw e
   }
 }
@@ -119,6 +132,7 @@ export default {
           sheetWarnings: stored?.warnings ?? [],
           lastError: status?.lastError ?? null,
           lastErrorAt: status?.lastErrorAt ?? null,
+          lastRun: status?.lastRun ?? null,
         },
         0,
       )
