@@ -111,10 +111,12 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .more:hover { opacity: 1; }
 .book {
   margin-top: auto; min-height: 44px; border: 0; border-radius: 0; cursor: pointer;
-  background: var(--cta); color: var(--cream); padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font: 700 11px/1 var(--font-sub); letter-spacing: .12em; text-transform: uppercase;
+  background: var(--cta); color: var(--cream); padding: 6px 12px;
+  font: 700 11px/1.25 var(--font-sub); letter-spacing: .12em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.book { display: flex; align-items: center; justify-content: center; gap: 8px; }
+/* A long name wraps onto a second line, centred, instead of running out of the button. */
+.book span { min-width: 0; text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
 .book svg { flex: none; width: 14px; height: 14px; }
 .book:hover { background: var(--cta-hover); }
 
@@ -136,6 +138,8 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
   .chips::-webkit-scrollbar { display: none; }
   .chip { flex: none; }
   .card { flex-basis: 80%; }
+  .book { font-size: 10px; letter-spacing: .08em; gap: 6px; }
+  .book svg { width: 12px; height: 12px; }
   .nav { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }

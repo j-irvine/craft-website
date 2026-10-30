@@ -92,7 +92,7 @@ class FindYourPerson extends HTMLElement {
           ${i.certification ? `<p class="cert">${esc(i.certification)}</p>` : ''}
           ${i.bio ? `<p class="bio">${esc(i.bio)}</p>` : ''}
           ${facts.length || i.bio ? `<button class="more" type="button" aria-expanded="${isOpen}">${isOpen ? 'Less' : `More about ${esc(i.name)}`}</button>` : ''}
-          <button class="book" type="button" data-book="${esc(i.id)}">Book with ${esc(i.name)}${DOWN}</button>
+          <button class="book" type="button" data-book="${esc(i.id)}"><span>Book with ${esc(i.name)}</span>${DOWN}</button>
         </div>
       </article>`
     }
