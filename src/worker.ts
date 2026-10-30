@@ -2,8 +2,9 @@
 // A cron re-reads the instructor sheet every 5 minutes and keeps the client-safe list in KV.
 
 import { WIDGET_JS } from './generated/widget'
-import { arketaBookingUrl, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
+import { arketaBookingUrl, arketaSessions, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
+import { fetchServiceHosts, offeredTypes, type ServiceHosts } from './arketa'
 import { syncPhotos, type PhotoCounts } from './photos'
 import { previewPage } from './preview'
 import PLACEHOLDER from '../assets/placeholder.jpg'
@@ -65,9 +66,16 @@ export async function refresh(env: Env): Promise<void> {
         photoErrors = [`Photos: ${String(e)}`]
       }
     }
+    step('arketa')
+    // Which instructors offer privates and duets, for their booking tabs. A failure keeps the last good copy.
+    const { hosts, errors: arketaErrors } = await fetchServiceHosts()
+    const previousHosts = (await env.DATA.get<ServiceHosts>('arketaHosts', 'json')) ?? {}
+    const mergedHosts = { ...previousHosts, ...hosts }
+    if (JSON.stringify(mergedHosts) !== JSON.stringify(previousHosts)) await env.DATA.put('arketaHosts', JSON.stringify(mergedHosts))
     step('list')
     const result = await buildInstructors(rows, photos)
     result.warnings.push(...photoErrors.map((message) => ({ row: 0, message })))
+    result.warnings.push(...arketaErrors.map((message) => ({ row: 0, message })))
     // KV's free tier allows 1,000 writes a day; only write when something changed.
     const previous = await env.DATA.get<Stored>('instructors', 'json')
     const same = previous && JSON.stringify([previous.instructors, previous.warnings]) === JSON.stringify([result.instructors, result.warnings])
@@ -120,13 +128,19 @@ export default {
       const location = url.searchParams.get('location')
       if (!isLocation(location)) return json({ error: 'location must be park-slope or uws' })
       const stored = await env.DATA.get<Stored>('instructors', 'json')
+      const hosts = (await env.DATA.get<ServiceHosts>('arketaHosts', 'json')) ?? {}
       const here = stored ? forLocation(stored.instructors, location) : []
+      // Only the tabs an instructor teaches here; none (not set up here in Arketa) falls back to Arketa's picker.
+      const sessions = (host: string | null) => (host ? arketaSessions(location, host, offeredTypes(hosts, location, host)) : [])
       return json({
         location: LOCATIONS[location],
         specialties: offeredSpecialties(here),
         // Booking any instructor at this studio, and each instructor's own times here.
+        // Arketa's page where the client picks any instructor, and the calendars for any instructor.
         booking: arketaBookingUrl(location, null),
-        instructors: here.map(({ locations: _, arketaHost, ...i }) => ({ ...i, booking: arketaHost ? arketaBookingUrl(location, arketaHost) : null })),
+        sessions: arketaSessions(location, null),
+        // Each instructor's own calendars here, once staff add their Arketa link to the sheet.
+        instructors: here.map(({ locations: _, arketaHost, ...i }) => ({ ...i, sessions: sessions(arketaHost) })),
       })
     }
 

@@ -28,6 +28,13 @@ p { margin: 6px 0 0; font: 13px/1.4 'Epilogue', system-ui, sans-serif; }
 }
 .close:hover { background: var(--terracotta); }
 .close svg { width: 18px; height: 18px; }
+.tabs { flex: none; display: flex; gap: 8px; padding: 0 22px 14px; }
+.tab {
+  min-height: 40px; padding: 0 18px; border: 1px solid var(--chocolate); border-radius: 0; cursor: pointer;
+  background: transparent; color: var(--chocolate);
+  font: 700 11px/1 'Craft Trio Grotesk', 'Trio Grotesk', 'Epilogue', system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase;
+}
+.tab[aria-selected='true'] { background: var(--chocolate); color: var(--cream); }
 .frame { flex: 1; min-height: 0; position: relative; background: #fff; border-top: 1px solid color-mix(in srgb, var(--chocolate) 15%, transparent); }
 iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; font: 14px/1.4 'Epilogue', system-ui, sans-serif; color: var(--chocolate); }
@@ -36,8 +43,17 @@ iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
   .panel { width: 100%; height: 100%; height: 100dvh; box-shadow: none; }
   header { padding: max(14px, env(safe-area-inset-top, 0px)) 14px 12px 16px; }
   h2 { font-size: 26px; }
+  .tabs { padding: 0 16px 12px; }
+  .tab { flex: 1; }
 }
 `
+
+/** One calendar the panel can show: a session type (Private, Duet) and Arketa's page for it. */
+export interface Session {
+  type: string
+  label: string
+  url: string
+}
 
 const CLOSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>'
 
@@ -45,8 +61,16 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 let current: { host: HTMLElement; done: () => void } | null = null
 
-/** Opens the panel with Arketa's page at `url`. Esc, the × or a tap outside closes it, and focus goes back to `returnTo`. */
-export function openBooking(title: string, note: string, url: string, returnTo?: HTMLElement | null) {
+/**
+ * Opens the panel on the first of `sessions` (Private, then Duet), with tabs to switch when there's more than one.
+ * Esc, the × or a tap outside closes it, and focus goes back to `returnTo`.
+ */
+export function openBooking(title: string, note: string, sessions: Session[], returnTo?: HTMLElement | null) {
+  const tabs = sessions.length > 1
+    ? `<div class="tabs" role="tablist" aria-label="Session type">${sessions
+        .map((s, n) => `<button class="tab" type="button" role="tab" aria-selected="${n === 0}" data-n="${n}">${esc(s.label)}</button>`)
+        .join('')}</div>`
+    : ''
   current?.done()
   const host = document.createElement('craft-booking-panel')
   const root = host.attachShadow({ mode: 'open' })
@@ -56,9 +80,10 @@ export function openBooking(title: string, note: string, url: string, returnTo?:
         <div class="titles"><h2 id="t">${esc(title)}</h2><p>${esc(note)}</p></div>
         <button class="close" type="button" aria-label="Close">${CLOSE}</button>
       </header>
+      ${tabs}
       <div class="frame">
         <p class="loading">Loading times…</p>
-        <iframe title="${esc(title)}" src="${esc(url)}" allow="payment; fullscreen" allowfullscreen></iframe>
+        <iframe title="${esc(title)}" src="${esc(sessions[0].url)}" allow="payment; fullscreen" allowfullscreen></iframe>
       </div>
     </div>`
 
@@ -82,7 +107,15 @@ export function openBooking(title: string, note: string, url: string, returnTo?:
   host.addEventListener('click', (e) => {
     if (e.composedPath()[0] === host) done()
   })
-  root.querySelector('iframe')!.addEventListener('load', () => root.querySelector('.loading')?.remove())
+  const frame = root.querySelector('iframe')!
+  frame.addEventListener('load', () => root.querySelector('.loading')?.remove())
+  root.querySelectorAll<HTMLButtonElement>('.tab').forEach((tab) =>
+    tab.addEventListener('click', () => {
+      if (tab.getAttribute('aria-selected') === 'true') return
+      root.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)))
+      frame.src = sessions[Number(tab.dataset.n)].url
+    }),
+  )
 
   document.body.append(host)
   current = { host, done }

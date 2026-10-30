@@ -10,13 +10,46 @@ export const LOCATIONS: Record<Location, string> = { 'park-slope': 'Park Slope',
 export const ARKETA_LOCATIONS: Record<Location, string> = { 'park-slope': '67ptpiCjvCsriKuEdItN', uws: 'N80JtYm27xFQhqhv8wam' }
 
 /**
- * Arketa's privates booking page for one studio: the client picks Private or Duet, then a time.
- * With an instructor (Arketa's "host" id) it shows only their times; without, the client picks an instructor there.
- * Checked live on 30 Oct 2026. Adding a service id instead (by-service/<id>?host=) drops the instructor.
+ * Arketa's privates booking page for one studio, where the client picks Private or Duet, then an instructor.
+ * With an instructor (Arketa's "host" id) it shows only theirs. Checked live on 30 Oct 2026. Used when an
+ * instructor has no Arketa link yet, so the client can pick them there.
  */
 export function arketaBookingUrl(location: Location, host: string | null): string {
   const q = new URLSearchParams({ ...(host ? { host } : {}), location: ARKETA_LOCATIONS[location] })
   return `https://app.arketa.co/iframe/craftpilates/privates/by-service?${q}`
+}
+
+export type SessionType = 'private' | 'duet'
+
+/** Each studio's Arketa services for privates and duets. */
+export const ARKETA_SERVICES: Record<Location, Record<SessionType, string>> = {
+  'park-slope': { private: 'W6jMmZalGy1q2aEynEMt', duet: '44ToNiZDKxDKpmC8IXnf' },
+  uws: { private: 'qm64gHeSlUrvjQSAiLpe', duet: 'dS81rRoLiWfJSzTJlw5s' },
+}
+
+export interface Session {
+  type: SessionType
+  label: string
+  url: string
+}
+
+/**
+ * Straight to the calendar for one session type at one studio: one instructor's times, or everyone's
+ * ("any"). This skips Arketa's service list (which puts Duet first) and its "Select an instructor" step,
+ * where clients had to pick "Any availability" a second time (owners, 30 Oct 2026; checked live that day).
+ * Private comes first.
+ */
+export function arketaSessions(location: Location, host: string | null, offers: SessionType[] = ['private', 'duet']): Session[] {
+  return (['private', 'duet'] as const)
+    .filter((type) => offers.includes(type))
+    .map((type) => {
+      const q = new URLSearchParams({ instructorId: host ?? 'any', locationId: ARKETA_LOCATIONS[location] })
+      return {
+        type,
+        label: type === 'private' ? 'Private' : 'Duet',
+        url: `https://app.arketa.co/iframe/craftpilates/privates/by-service/${ARKETA_SERVICES[location][type]}/location?${q}`,
+      }
+    })
 }
 
 /** The instructor's Arketa id from what staff paste: the "Private availability" link, its embed code, or the bare id. */

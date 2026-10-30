@@ -11,16 +11,17 @@ const bundle = async (entry, format) =>
 const widget = await bundle('src/widget/widget.ts', 'iife')
 const previewModule = await bundle('src/preview.ts', 'esm')
 const { previewPage } = await import(`data:text/javascript;base64,${Buffer.from(previewModule).toString('base64')}`)
-const { arketaBookingUrl } = await import(`data:text/javascript;base64,${Buffer.from(await bundle('src/instructors.ts', 'esm')).toString('base64')}`)
+const { arketaBookingUrl, arketaSessions } = await import(`data:text/javascript;base64,${Buffer.from(await bundle('src/instructors.ts', 'esm')).toString('base64')}`)
 
 const sample = JSON.parse(readFileSync('preview/sample.json', 'utf8'))
 const dataFor = (l) => ({
   ...sample,
   location: l === 'uws' ? 'Upper West Side' : 'Park Slope',
   booking: arketaBookingUrl(l, null),
+  sessions: arketaSessions(l, null),
   instructors: sample.instructors
     .filter((i) => i.locations.includes(l))
-    .map(({ locations, arketaHost, ...i }) => ({ ...i, booking: arketaHost ? arketaBookingUrl(l, arketaHost) : null })),
+    .map(({ locations, arketaHost, ...i }) => ({ ...i, sessions: arketaHost ? arketaSessions(l, arketaHost) : null })),
 })
 const attr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 // The widget mounts after its own <script>, so inline copies need it as a separate element.
