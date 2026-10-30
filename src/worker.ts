@@ -4,7 +4,7 @@
 import { WIDGET_JS } from './generated/widget'
 import { arketaBookingUrl, arketaSessions, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
-import { fetchServiceHosts, offeredTypes, type ServiceHosts } from './arketa'
+import { fetchServiceHosts, offeredTypes, type HostNames, type ServiceHosts } from './arketa'
 import { syncPhotos, type PhotoCounts } from './photos'
 import { previewPage } from './preview'
 import PLACEHOLDER from '../assets/placeholder.jpg'
@@ -68,12 +68,16 @@ export async function refresh(env: Env): Promise<void> {
     }
     step('arketa')
     // Which instructors offer privates and duets, for their booking tabs. A failure keeps the last good copy.
-    const { hosts, errors: arketaErrors } = await fetchServiceHosts()
+    const { hosts, names, errors: arketaErrors } = await fetchServiceHosts()
     const previousHosts = (await env.DATA.get<ServiceHosts>('arketaHosts', 'json')) ?? {}
     const mergedHosts = { ...previousHosts, ...hosts }
     if (JSON.stringify(mergedHosts) !== JSON.stringify(previousHosts)) await env.DATA.put('arketaHosts', JSON.stringify(mergedHosts))
+    const previousNames = (await env.DATA.get<HostNames>('arketaNames', 'json')) ?? {}
+    // A complete read replaces the names, so instructors who left Arketa stop matching; a partial one adds to them.
+    const mergedNames = arketaErrors.length ? { ...previousNames, ...names } : names
+    if (JSON.stringify(mergedNames) !== JSON.stringify(previousNames)) await env.DATA.put('arketaNames', JSON.stringify(mergedNames))
     step('list')
-    const result = await buildInstructors(rows, photos)
+    const result = await buildInstructors(rows, photos, mergedNames)
     result.warnings.push(...photoErrors.map((message) => ({ row: 0, message })))
     result.warnings.push(...arketaErrors.map((message) => ({ row: 0, message })))
     // KV's free tier allows 1,000 writes a day; only write when something changed.

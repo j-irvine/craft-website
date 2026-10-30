@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arketaBookingUrl, arketaHostId, arketaSessions, buildInstructors, candidateEmails, driveFileId, forLocation, nameKey, offeredSpecialties, parseLocations, parseYears, photoLinks, photoNames, yearsLabel } from '../src/instructors'
+import { arketaBookingUrl, arketaHostId, arketaSessions, matchArketaHost, buildInstructors, candidateEmails, driveFileId, forLocation, nameKey, offeredSpecialties, parseLocations, parseYears, photoLinks, photoNames, yearsLabel } from '../src/instructors'
 import { hostsFromReply, offeredTypes } from '../src/arketa'
 import { choosePhotos, emailFromName, photoOwner } from '../src/photos'
 
@@ -297,9 +297,49 @@ describe('Private and Duet calendars', () => {
   })
 
   it("reads instructor ids from Arketa's reply, and rejects a reply that changed shape", () => {
-    expect(hostsFromReply({ service: {}, instructors: [{ id: 'a', name: 'Abby' }, { id: 'b' }] })).toEqual(['a', 'b'])
+    expect(hostsFromReply({ service: {}, instructors: [{ id: 'a', name: 'Abby' }, { id: 'b' }] })).toEqual([
+      { id: 'a', name: 'Abby' },
+      { id: 'b', name: null },
+    ])
     expect(hostsFromReply({ instructors: [{ name: 'Abby' }] })).toBeNull()
     expect(hostsFromReply({ items: [] })).toBeNull()
     expect(hostsFromReply(null)).toBeNull()
+  })
+})
+
+describe('matching instructors to Arketa by name', () => {
+  const arketa = { a1: 'Abby', s1: 'Sarah K', s2: 'Sarah D', l1: 'Lauren Moss', m1: 'Maya', m2: 'maya' }
+  const people = [
+    { first: 'Abby', last: 'Lee-Zampi' },
+    { first: 'Sarah', last: 'Kim' },
+    { first: 'Sarah', last: 'Diaz' },
+    { first: 'Lauren', last: 'Moss' },
+    { first: 'Maya', last: 'Ortiz' },
+    { first: 'Zoe', last: 'Park' },
+  ]
+  const match = (i: number) => matchArketaHost(people[i], people, arketa)
+  it('matches a full name, a first name, or a first name and initial', () => {
+    expect(match(0)).toBe('a1')
+    expect(match(1)).toBe('s1')
+    expect(match(2)).toBe('s2')
+    expect(match(3)).toBe('l1')
+  })
+  it('matches nobody when Arketa has the name twice or not at all', () => {
+    expect(match(4)).toBeNull()
+    expect(match(5)).toBeNull()
+  })
+  it("doesn't give a shared first name to one of the two", () => {
+    expect(matchArketaHost({ first: 'Sarah', last: 'Kim' }, people, { x: 'Sarah' })).toBeNull()
+  })
+  it('lets a pasted link win, and says who has no match', async () => {
+    const link = 'https://app.arketa.co/iframe/craftpilates/privates/by-service?host=LtWx0pB3l0PROXKmxGCUpTcB4EA2'
+    const rows = [HEADER, row({ name: 'Ana Rivera', arketa: link }), row({ email: 'bo@example.com', name: 'Bo Li' }), row({ email: 'cy@example.com', name: 'Cy Ng' })]
+    const { instructors, warnings } = await buildInstructors(rows, new Map(), { a: 'Ana', b: 'Bo' })
+    expect(instructors.map((i) => [i.name, i.arketaHost])).toEqual([
+      ['Ana', 'LtWx0pB3l0PROXKmxGCUpTcB4EA2'],
+      ['Bo', 'b'],
+      ['Cy', null],
+    ])
+    expect(warnings).toEqual([{ row: 4, message: expect.stringContaining('No instructor with this name') }])
   })
 })
