@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { arketaBookingUrl, arketaHostId, buildInstructors, candidateEmails, driveFileId, forLocation, nameKey, offeredSpecialties, parseLocations, parseYears, photoLinks, photoNames, yearsLabel } from '../src/instructors'
+import { arketaBookingUrl, arketaHostId, arketaSessions, buildInstructors, candidateEmails, driveFileId, forLocation, nameKey, offeredSpecialties, parseLocations, parseYears, photoLinks, photoNames, yearsLabel } from '../src/instructors'
+import { hostsFromReply, offeredTypes } from '../src/arketa'
 import { choosePhotos, emailFromName, photoOwner } from '../src/photos'
 
 // The real form's headers (29 Oct 2026), plus the columns being added. Rows below are made up.
@@ -265,5 +266,40 @@ describe('Arketa booking', () => {
       ['Bo', null],
     ])
     expect(warnings.map((w) => w.message)).toEqual(["Couldn't read the Arketa booking link, so Book opens the studio's calendar"])
+  })
+})
+
+describe('Private and Duet calendars', () => {
+  it('link straight to each calendar, Private first, for one instructor or any', () => {
+    expect(arketaSessions('uws', 'LtWx0pB3l0PROXKmxGCUpTcB4EA2')).toEqual([
+      {
+        type: 'private',
+        label: 'Private',
+        url: 'https://app.arketa.co/iframe/craftpilates/privates/by-service/qm64gHeSlUrvjQSAiLpe/location?instructorId=LtWx0pB3l0PROXKmxGCUpTcB4EA2&locationId=N80JtYm27xFQhqhv8wam',
+      },
+      {
+        type: 'duet',
+        label: 'Duet',
+        url: 'https://app.arketa.co/iframe/craftpilates/privates/by-service/dS81rRoLiWfJSzTJlw5s/location?instructorId=LtWx0pB3l0PROXKmxGCUpTcB4EA2&locationId=N80JtYm27xFQhqhv8wam',
+      },
+    ])
+    expect(arketaSessions('park-slope', null, ['duet']).map((x) => x.url)).toEqual([
+      'https://app.arketa.co/iframe/craftpilates/privates/by-service/44ToNiZDKxDKpmC8IXnf/location?instructorId=any&locationId=67ptpiCjvCsriKuEdItN',
+    ])
+  })
+
+  it("offers only the types Arketa has the instructor on, and both when a service couldn't be read", () => {
+    const hosts = { W6jMmZalGy1q2aEynEMt: ['a'], '44ToNiZDKxDKpmC8IXnf': ['a', 'b'] }
+    expect(offeredTypes(hosts, 'park-slope', 'a')).toEqual(['private', 'duet'])
+    expect(offeredTypes(hosts, 'park-slope', 'b')).toEqual(['duet'])
+    expect(offeredTypes(hosts, 'park-slope', 'c')).toEqual([])
+    expect(offeredTypes({}, 'uws', 'c')).toEqual(['private', 'duet'])
+  })
+
+  it("reads instructor ids from Arketa's reply, and rejects a reply that changed shape", () => {
+    expect(hostsFromReply({ service: {}, instructors: [{ id: 'a', name: 'Abby' }, { id: 'b' }] })).toEqual(['a', 'b'])
+    expect(hostsFromReply({ instructors: [{ name: 'Abby' }] })).toBeNull()
+    expect(hostsFromReply({ items: [] })).toBeNull()
+    expect(hostsFromReply(null)).toBeNull()
   })
 })

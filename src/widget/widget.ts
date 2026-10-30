@@ -4,7 +4,7 @@
 // Everything renders in a shadow root so the Showit page's styles and ours never collide.
 
 import { CSS, EPILOGUE, fontFaces } from './styles'
-import { openBooking } from './panel'
+import { openBooking, type Session } from './panel'
 
 interface Specialty {
   key: string
@@ -19,16 +19,18 @@ interface Instructor {
   certification: string | null
   bio: string | null
   photo: string | null
-  /** Arketa's booking page with only their times at this studio, once staff add their link to the sheet. */
-  booking?: string | null
+  /** Their calendars at this studio (Private first), once staff add their Arketa link to the sheet. */
+  sessions?: Session[] | null
 }
 
 interface Data {
   location: string
   specialties: Specialty[]
   instructors: Instructor[]
-  /** Arketa's booking page for any instructor at this studio. */
+  /** Arketa's page where the client picks Private or Duet and then an instructor, at this studio. */
   booking?: string
+  /** The calendars for any instructor at this studio, Private first. */
+  sessions?: Session[]
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -266,10 +268,11 @@ class FindYourPerson extends HTMLElement {
   private book(i: Instructor | null, button: HTMLElement) {
     const d = this.data!
     if (this.bookingMode() === 'panel' && d.booking) {
-      if (!i) return openBooking('Any availability', `Privates and duets with any instructor · ${d.location}`, d.booking, button)
+      const picker = [{ type: 'private', label: 'Private or duet', url: d.booking }] satisfies Session[]
+      if (!i) return openBooking('Any availability', `Every instructor · ${d.location}`, d.sessions?.length ? d.sessions : picker, button)
+      if (i.sessions?.length) return openBooking(`Book with ${i.name}`, d.location, i.sessions, button)
       // Until staff add their Arketa link to the sheet, the studio's page, where the client picks them.
-      if (i.booking) return openBooking(`Book with ${i.name}`, `Private or duet · ${d.location}`, i.booking, button)
-      return openBooking(`Book with ${i.name}`, `Choose ${i.name} as your instructor · ${d.location}`, d.booking, button)
+      return openBooking(`Book with ${i.name}`, `Choose ${i.name} as your instructor · ${d.location}`, picker, button)
     }
     this.scrollToCalendar(i)
   }
