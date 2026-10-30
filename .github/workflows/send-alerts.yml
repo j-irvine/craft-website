@@ -1,0 +1,19 @@
+# Emails ALERT_EMAIL the full list of disagreements between the instructor sheet and Arketa within
+# 5 minutes (the next cron run), like the Monday reminder. Run it from Actions → Send alerts now → Run workflow.
+name: Send alerts now
+on:
+  workflow_dispatch:
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: KV namespace
+        run: node scripts/ci/kv.mjs
+      - name: Ask the next run to send
+        run: npx --yes wrangler@4 kv key put --binding DATA --remote alerts:send-now 1

@@ -65,6 +65,13 @@ describe('nextAlerts', () => {
     expect(nextAlerts(reminder.state, m, false, t('2026-11-02T14:10:00Z')).email).toBeNull()
   })
 
+  it('sends the whole list at once when asked, even before the hour or with nothing open', () => {
+    const first = nextAlerts(EMPTY_STATE, m, false, t('2026-10-30T14:00:00Z'), true, true)
+    expect(first.email?.text).toContain('Open right now (1):')
+    expect(nextAlerts(first.state, m, false, t('2026-10-30T15:05:00Z')).email).toBeNull()
+    expect(nextAlerts(EMPTY_STATE, [], false, t('2026-10-30T14:00:00Z'), true, true).email?.subject).toBe('Find Your Person: the sheet and Arketa agree')
+  })
+
   it("keeps everything for later when it can't send", () => {
     const first = nextAlerts(EMPTY_STATE, m, false, t('2026-10-30T14:00:00Z'), false)
     const later = nextAlerts(first.state, m, false, t('2026-10-30T15:00:00Z'), false)

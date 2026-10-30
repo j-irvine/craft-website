@@ -34,9 +34,10 @@ export interface Email {
 
 /**
  * The next state and the email to send now, if any. `readFailed` is whether this run couldn't read Arketa
- * (the mismatches then come from the last good copy). `canSend` false only tracks them. Mondays from 9 am New York time count for the reminder.
+ * (the mismatches then come from the last good copy). `canSend` false only tracks them. `sendNow` sends the
+ * full list at once, like the Monday reminder, even when nothing is open (staff asked for it from GitHub). Mondays from 9 am New York time count for the reminder.
  */
-export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed: boolean, now: Date, canSend = true): { state: AlertState; email: Email | null } {
+export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed: boolean, now: Date, canSend = true, sendNow = false): { state: AlertState; email: Email | null } {
   const at = now.toISOString()
   const next: AlertState = { ...state, open: { ...state.open } }
   if (readFailed) {
@@ -52,13 +53,23 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
   const settled = Object.entries(next.open).filter(([, o]) => now.getTime() - Date.parse(o.since) >= SETTLE_MS)
   const fresh = settled.filter(([, o]) => !o.emailed)
   const readProblem = next.readFailingSince !== null && !next.readFailureEmailed && now.getTime() - Date.parse(next.readFailingSince) >= READ_FAILURE_MS
-  const reminderDue = settled.length > 0 && isMondayMorning(now) && (!next.lastReminder || now.getTime() - Date.parse(next.lastReminder) >= WEEK_MS - 12 * 60 * 60 * 1000)
+  const reminderDue = sendNow || (settled.length > 0 && isMondayMorning(now) && (!next.lastReminder || now.getTime() - Date.parse(next.lastReminder) >= WEEK_MS - 12 * 60 * 60 * 1000))
   // Without a way to send, nothing is marked as emailed, so it all goes out once one is set up.
   if (!canSend || (!fresh.length && !readProblem && !reminderDue)) return { state: next, email: null }
 
   for (const [key, o] of settled) next.open[key] = { ...o, emailed: true }
   if (readProblem) next.readFailureEmailed = true
   if (reminderDue) next.lastReminder = at
+
+  if (sendNow) {
+    // Everything open, not only what has settled: it was asked for now.
+    const all = Object.values(next.open)
+    for (const [key, o] of Object.entries(next.open)) next.open[key] = { ...o, emailed: true }
+    const text = all.length
+      ? [`Open right now (${all.length}):`, ...all.map((o) => `- ${o.message}`), '', FOOTER].join('\n')
+      : 'Everyone on the website for privates matches Arketa at each studio, and everyone set up in Arketa is on the website.'
+    return { state: next, email: { subject: all.length ? subjectFor(all.length) : 'Find Your Person: the sheet and Arketa agree', text } }
+  }
 
   const freshKeys = new Set(fresh.map(([key]) => key))
   const older = settled.filter(([key]) => !freshKeys.has(key))
@@ -73,18 +84,22 @@ export function nextAlerts(state: AlertState, mismatches: Mismatch[], readFailed
     lines.push(fresh.length ? 'Still open:' : `Still open (${older.length}):`, ...older.map(([, o]) => `- ${o.message}`), '')
   }
   if (settled.length) {
-    lines.push(
-      "Each of these is usually a mistake, either in the instructor sheet (privates answer, locations, Hide from website) or in which Private and Duet services the instructor is on in Arketa. Once the two agree, it drops off this list by itself.",
-      '',
-      'Someone at a studio on the website who has no Arketa calendar there gets a message to email hello@craftpilates.com instead of a booking calendar.',
-    )
+    lines.push(FOOTER)
   }
   const count = settled.length
   const subject = readProblem && !count
     ? "Find Your Person: can't check Arketa"
-    : `Find Your Person: ${count} ${count === 1 ? 'thing' : 'things'} to check between the sheet and Arketa`
+    : subjectFor(count)
   return { state: next, email: { subject, text: lines.join('\n').trim() } }
 }
+
+const FOOTER = [
+  "Each of these is usually a mistake, either in the instructor sheet (privates answer, locations, Hide from website) or in which Private and Duet services the instructor is on in Arketa. Once the two agree, it drops off this list by itself.",
+  '',
+  'Someone at a studio on the website who has no Arketa calendar there gets a message to email hello@craftpilates.com instead of a booking calendar.',
+].join('\n')
+
+const subjectFor = (count: number) => `Find Your Person: ${count} ${count === 1 ? 'thing' : 'things'} to check between the sheet and Arketa`
 
 function isMondayMorning(now: Date): boolean {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(now)
