@@ -45,6 +45,8 @@ const DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-6-6
  */
 const DEFAULT_BOOKING: 'scroll' | 'panel' = 'scroll'
 
+const STUDIO_EMAIL = 'hello@craftpilates.com'
+
 const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 class FindYourPerson extends HTMLElement {
@@ -272,11 +274,19 @@ class FindYourPerson extends HTMLElement {
   /** "Book with [name]", or "See all times" (no instructor). */
   private book(i: Instructor | null, button: HTMLElement) {
     const d = this.data!
+    // Not set up for privates here in Arketa, so no calendar has them: email the studio to find a time
+    // (owners, 30 Oct 2026). Staff are emailed about it too (src/alerts.ts).
+    if (i?.sessions && !i.sessions.length) {
+      return openBooking(`Book with ${i.name}`, d.location, [], button, {
+        message: `${i.name} doesn't have times to book online right now. Email us at ${STUDIO_EMAIL} and we'll help you find a time with ${i.name}.`,
+        email: STUDIO_EMAIL,
+      })
+    }
     if (this.bookingMode() === 'panel' && d.booking) {
       const picker = [{ type: 'private', label: 'Private or duet', url: d.booking }] satisfies Session[]
       if (!i) return openBooking('Any availability', `Every instructor · ${d.location}`, d.sessions?.length ? d.sessions : picker, button)
       if (i.sessions?.length) return openBooking(`Book with ${i.name}`, d.location, i.sessions, button)
-      // Until staff add their Arketa link to the sheet, the studio's page, where the client picks them.
+      // Arketa's instructors couldn't be read yet: the studio's page, where the client picks them.
       return openBooking(`Book with ${i.name}`, `Choose ${i.name} as your instructor · ${d.location}`, picker, button)
     }
     this.scrollToCalendar(i)

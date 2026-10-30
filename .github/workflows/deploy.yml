@@ -5,6 +5,7 @@
 #   GOOGLE_SERVICE_ACCOUNT                           the craft-website service account's JSON key
 #   SHEET_ID                                         from the responses sheet's URL
 #   PHOTOS_FOLDER_ID                                 from the website-photos folder's URL (optional)
+#   RESEND_API_KEY, ALERT_EMAIL                      a Resend sending key and who to email when the sheet and Arketa disagree (optional)
 #   TRIO_GROTESK_WOFF2_BASE64                        the brand's sub-header font (licensed, so not in this repo)
 name: Deploy
 on:
@@ -34,8 +35,10 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
           PHOTOS_FOLDER_ID: ${{ secrets.PHOTOS_FOLDER_ID }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
         run: |
-          for name in GOOGLE_SERVICE_ACCOUNT SHEET_ID PHOTOS_FOLDER_ID; do
+          for name in GOOGLE_SERVICE_ACCOUNT SHEET_ID PHOTOS_FOLDER_ID RESEND_API_KEY ALERT_EMAIL; do
             value="${!name}"
             if [ -n "$value" ]; then printf '%s' "$value" | npx --yes wrangler@4 secret put "$name"; else echo "$name not set, skipped"; fi
           done

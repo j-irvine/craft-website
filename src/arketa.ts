@@ -3,7 +3,7 @@
 // Read from the public API behind Arketa's own booking widget. It's undocumented and unsupported, so when
 // it fails or changes shape, the last good copy is kept, and without one every instructor gets both tabs.
 
-import { ARKETA_SERVICES, type Location, type SessionType } from './instructors'
+import { ARKETA_SERVICES, LOCATIONS, type Location, type SessionType } from './instructors'
 
 const WIDGET_API = 'https://widget-api-tkaeguucxq-uc.a.run.app/4l7q5eYxQYfsO5lsk9adVa8rRYC3'
 
@@ -54,4 +54,60 @@ export function offeredTypes(hosts: ServiceHosts, location: Location, host: stri
     const ids = hosts[ARKETA_SERVICES[location][type]]
     return !ids || ids.includes(host)
   })
+}
+
+/** A place where the sheet and Arketa disagree about who does privates where. Usually a mistake to fix. */
+export interface Mismatch {
+  /** Stable while the mismatch lasts, so each one is emailed once. */
+  key: string
+  message: string
+}
+
+const TYPE_NAMES: Record<SessionType, string> = { private: 'privates', duet: 'duets' }
+
+/**
+ * Who's on the website for a studio but not set up in Arketa there (or only for privates or only duets),
+ * and who's set up in Arketa there but not on the website. Services we couldn't read are skipped.
+ */
+export function findMismatches(
+  instructors: { name: string; locations: Location[]; arketaHost: string | null }[],
+  hosts: ServiceHosts,
+  names: HostNames,
+): Mismatch[] {
+  const out: Mismatch[] = []
+  const known = Object.keys(names).length > 0
+  for (const i of instructors) {
+    if (!i.arketaHost) {
+      if (known) out.push({ key: `unmatched:${i.name}`, message: `${i.name} is on the website, but no one with that name is set up for privates or duets in Arketa.` })
+      continue
+    }
+    for (const location of i.locations) {
+      const studio = LOCATIONS[location]
+      const read = (['private', 'duet'] as const).filter((t) => hosts[ARKETA_SERVICES[location][t]])
+      const has = read.filter((t) => hosts[ARKETA_SERVICES[location][t]].includes(i.arketaHost!))
+      const missing = read.filter((t) => !has.includes(t))
+      if (!missing.length) continue
+      const message = has.length
+        ? `${i.name} is set up in Arketa for ${studio} ${TYPE_NAMES[has[0]]} but not ${TYPE_NAMES[missing[0]]}.`
+        : `${i.name} is on the website for ${studio}, but isn't set up in Arketa for ${studio} ${missing.map((t) => TYPE_NAMES[t]).join(' or ')}.`
+      out.push({ key: `missing:${location}:${missing.join('+')}:${i.arketaHost}`, message })
+    }
+  }
+  for (const location of Object.keys(LOCATIONS) as Location[]) {
+    const studio = LOCATIONS[location]
+    const onSite = new Set(instructors.filter((i) => i.locations.includes(location) && i.arketaHost).map((i) => i.arketaHost))
+    const offers = new Map<string, SessionType[]>()
+    for (const t of ['private', 'duet'] as const) {
+      for (const h of hosts[ARKETA_SERVICES[location][t]] ?? []) offers.set(h, [...(offers.get(h) ?? []), t])
+    }
+    for (const [h, types] of offers) {
+      if (onSite.has(h)) continue
+      const name = names[h] ?? 'Someone without a name'
+      out.push({
+        key: `extra:${location}:${h}`,
+        message: `${name} is set up in Arketa for ${studio} ${types.map((t) => TYPE_NAMES[t]).join(' and ')}, but isn't on the website for ${studio}.`,
+      })
+    }
+  }
+  return out
 }

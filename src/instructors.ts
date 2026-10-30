@@ -92,8 +92,11 @@ export const SPECIALTIES = [
 
 export type SpecialtyKey = (typeof SPECIALTIES)[number]['key']
 
-/** Answers in a client-area grid that earn a public tag (owners, 29 Oct 2026). "Interested" and "a few clients" don't. */
-const QUALIFYING_ANSWERS = ['have substantial teaching experience', 'completed relevant training']
+/**
+ * Answers in a client-area grid that earn a public tag: any teaching experience or relevant training
+ * (owners, 30 Oct 2026: "have taught a few clients" counts too). "Interested" and "have not taught yet" don't.
+ */
+const QUALIFYING_ANSWERS = ['have taught a few', 'have substantial teaching experience', 'completed relevant training']
 
 export interface PublicInstructor {
   id: string

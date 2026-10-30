@@ -4,7 +4,8 @@
 import { WIDGET_JS } from './generated/widget'
 import { arketaBookingUrl, arketaSessions, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
-import { fetchServiceHosts, offeredTypes, type HostNames, type ServiceHosts } from './arketa'
+import { fetchServiceHosts, findMismatches, offeredTypes, type HostNames, type ServiceHosts } from './arketa'
+import { EMPTY_STATE, nextAlerts, sendEmail, type AlertState } from './alerts'
 import { syncPhotos, type PhotoCounts } from './photos'
 import { previewPage } from './preview'
 import PLACEHOLDER from '../assets/placeholder.jpg'
@@ -18,6 +19,10 @@ export interface Env {
   SHEET_TAB: string
   /** The website-photos Drive folder's id (secret), shared with the service account as Viewer. Optional. */
   PHOTOS_FOLDER_ID?: string
+  /** Resend key that can send email (secret). With ALERT_EMAIL, staff are emailed when the sheet and Arketa disagree. */
+  RESEND_API_KEY?: string
+  /** Who gets those emails (secret, comma-separated), so addresses stay out of this public repo. */
+  ALERT_EMAIL?: string
 }
 
 interface Stored extends SheetResult {
@@ -26,6 +31,8 @@ interface Stored extends SheetResult {
 
 interface Status {
   updatedAt: string | null
+  /** How many disagreements between the sheet and Arketa the last run found (emailed to staff). */
+  mismatches?: number
   lastError: string | null
   lastErrorAt: string | null
   /** The latest run: when it started, the step it reached, and when it finished (null while running or if it was cut off). */
@@ -84,11 +91,27 @@ export async function refresh(env: Env): Promise<void> {
     const previous = await env.DATA.get<Stored>('instructors', 'json')
     const same = previous && JSON.stringify([previous.instructors, previous.warnings]) === JSON.stringify([result.instructors, result.warnings])
     if (!same) await env.DATA.put('instructors', JSON.stringify({ ...result, updatedAt: new Date().toISOString() } satisfies Stored))
-    await env.DATA.put('status', JSON.stringify({ ...status, lastError: null, lastRun: { ...run, step: 'done', finishedAt: new Date().toISOString(), photos: photoCounts } }))
+    step('alerts')
+    const mismatches = findMismatches(result.instructors, mergedHosts, mergedNames)
+    await alertStaff(env, mismatches, arketaErrors.length > 0)
+    await env.DATA.put('status', JSON.stringify({ ...status, mismatches: mismatches.length, lastError: null, lastRun: { ...run, step: 'done', finishedAt: new Date().toISOString(), photos: photoCounts } }))
   } catch (e) {
     const at = new Date().toISOString()
     await env.DATA.put('status', JSON.stringify({ ...status, lastError: String(e), lastErrorAt: at, lastRun: { ...run, finishedAt: at, photos: photoCounts } }))
     throw e
+  }
+}
+
+/** Emails staff about disagreements between the sheet and Arketa (src/alerts.ts). Never fails the run. */
+async function alertStaff(env: Env, mismatches: ReturnType<typeof findMismatches>, readFailed: boolean) {
+  try {
+    const previous = (await env.DATA.get<AlertState>('alerts', 'json')) ?? EMPTY_STATE
+    const { state, email } = nextAlerts(previous, mismatches, readFailed, new Date(), Boolean(env.RESEND_API_KEY && env.ALERT_EMAIL))
+    // Saved only once the email is sent, so a failed send is tried again next run.
+    if (email) await sendEmail(env.RESEND_API_KEY!, env.ALERT_EMAIL!, email)
+    if (JSON.stringify(state) !== JSON.stringify(previous)) await env.DATA.put('alerts', JSON.stringify(state))
+  } catch (e) {
+    console.error('alerts', e)
   }
 }
 
@@ -133,9 +156,12 @@ export default {
       if (!isLocation(location)) return json({ error: 'location must be park-slope or uws' })
       const stored = await env.DATA.get<Stored>('instructors', 'json')
       const hosts = (await env.DATA.get<ServiceHosts>('arketaHosts', 'json')) ?? {}
+      const names = (await env.DATA.get<HostNames>('arketaNames', 'json')) ?? {}
       const here = stored ? forLocation(stored.instructors, location) : []
-      // Only the tabs an instructor teaches here; none (not set up here in Arketa) falls back to Arketa's picker.
-      const sessions = (host: string | null) => (host ? arketaSessions(location, host, offeredTypes(hosts, location, host)) : [])
+      // Only the tabs an instructor teaches here. None (not set up here in Arketa) says to email the studio;
+      // null (Arketa's instructors never read) falls back to Arketa's picker.
+      const known = Object.keys(names).length > 0
+      const sessions = (host: string | null) => (host ? arketaSessions(location, host, offeredTypes(hosts, location, host)) : known ? [] : null)
       return json({
         location: LOCATIONS[location],
         specialties: offeredSpecialties(here),
@@ -143,7 +169,7 @@ export default {
         // Arketa's page where the client picks any instructor, and the calendars for any instructor.
         booking: arketaBookingUrl(location, null),
         sessions: arketaSessions(location, null),
-        // Each instructor's own calendars here, once staff add their Arketa link to the sheet.
+        // Each instructor's own calendars here.
         instructors: here.map(({ locations: _, arketaHost, ...i }) => ({ ...i, sessions: sessions(arketaHost) })),
       })
     }
@@ -156,6 +182,8 @@ export default {
           updatedAt: stored?.updatedAt ?? null,
           shown: stored ? Object.fromEntries(Object.keys(LOCATIONS).map((l) => [l, forLocation(stored.instructors, l as Location).length])) : null,
           sheetWarnings: stored?.warnings ?? [],
+          arketaMismatches: status?.mismatches ?? null,
+          alertsEmail: Boolean(env.RESEND_API_KEY && env.ALERT_EMAIL),
           lastError: status?.lastError ?? null,
           lastErrorAt: status?.lastErrorAt ?? null,
           lastRun: status?.lastRun ?? null,
