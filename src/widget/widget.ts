@@ -86,7 +86,8 @@ class FindYourPerson extends HTMLElement {
     const labels = new Map(d.specialties.map((s) => [s.key, s.label]))
     // Only offer chips someone at this studio actually has.
     const offered = d.specialties.filter((s) => d.instructors.some((i) => i.specialties.includes(s.key)))
-    const shown = this.filter ? d.instructors.filter((i) => i.specialties.includes(this.filter!)) : d.instructors
+    const matches = (i: Instructor) => !this.filter || i.specialties.includes(this.filter)
+    const shown = d.instructors.filter(matches)
 
     const chip = (key: string | null, label: string) =>
       `<button class="chip" type="button" data-filter="${key ?? ''}" aria-pressed="${this.filter === key}">${esc(label)}</button>`
@@ -113,7 +114,7 @@ class FindYourPerson extends HTMLElement {
       const allTags = this.allTags.has(i.id)
       // "Show fewer" only when the full list was opened with "+N more"; "More about" shows every tag too.
       const fewer = allTags && !isOpen ? `<li class="tags-toggle"><button type="button" aria-expanded="true">Show fewer</button></li>` : ''
-      return `<article class="card${isOpen ? ' open' : ''}${allTags ? ' all-tags' : ''}" data-id="${esc(i.id)}">
+      return `<article class="card${isOpen ? ' open' : ''}${allTags ? ' all-tags' : ''}${matches(i) ? '' : ' out'}" data-id="${esc(i.id)}">
         <div class="photo">${photo}</div>
         <div class="body">
           <h3>${esc(i.name)}</h3>
@@ -135,7 +136,7 @@ class FindYourPerson extends HTMLElement {
       <div class="rail">
         <button class="nav prev" type="button" aria-label="Previous instructors">${ARROW}</button>
         <div class="track" tabindex="0" aria-label="Instructors">
-          ${anyone}${shown.length ? shown.map(card).join('') : `<p class="note">No instructors match that yet.</p>`}
+          ${anyone}${d.instructors.map(card).join('')}${shown.length ? '' : `<p class="note">No instructors match that yet.</p>`}
         </div>
         <button class="nav next" type="button" aria-label="More instructors">${ARROW}</button>
       </div>
@@ -199,11 +200,14 @@ class FindYourPerson extends HTMLElement {
 
   /**
    * Closed cards' text is one height, the fullest card's, so names line up without a gap above most
-   * cards' buttons (owners, Oct 30). Measured with the button straight under the text.
+   * cards' buttons (owners, Oct 30). Measured with the button straight under the text, over every
+   * instructor at the studio, filtered out or not, so photos don't change size with the filter (owners, Oct 30).
    */
   private fitBodies() {
     const bodies = [...this.root.querySelectorAll<HTMLElement>('.card:not(.open):not(.all-tags):not(.any) .body')]
     if (!bodies.length) return
+    // Filtered-out cards are laid out just for the measurement, within this frame, so they never show.
+    this.track().classList.add('measuring')
     this.style.removeProperty('--body-h')
     const tallest = Math.max(
       ...bodies.map((b) => {
@@ -216,6 +220,7 @@ class FindYourPerson extends HTMLElement {
         return h
       }),
     )
+    this.track().classList.remove('measuring')
     if (tallest > 0) this.style.setProperty('--body-h', `${Math.ceil(tallest)}px`)
   }
 

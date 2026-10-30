@@ -107,6 +107,9 @@ export const CSS = `
   flex: 0 0 264px; scroll-snap-align: start; display: flex; flex-direction: column;
   background: var(--card); color: var(--card-text); border-radius: 0; overflow: hidden;
 }
+/* Cards the filter leaves out stay in the row, hidden, so card heights can count them (fitBodies). */
+.card.out { display: none; }
+.measuring .card.out { display: flex; }
 .photo { flex: 1 1 auto; min-height: 120px; position: relative; background: var(--photo-bg); }
 .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
 /* The socks shot: keep the socks in view however the card crops it. */
