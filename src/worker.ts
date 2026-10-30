@@ -4,7 +4,7 @@
 import { WIDGET_JS } from './generated/widget'
 import { buildInstructors, candidateEmails, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
-import { syncPhotos } from './photos'
+import { syncPhotos, type PhotoCounts } from './photos'
 import { previewPage } from './preview'
 
 export interface Env {
@@ -27,7 +27,7 @@ interface Status {
   lastError: string | null
   lastErrorAt: string | null
   /** The latest run: when it started, the step it reached, and when it finished (null while running or if it was cut off). */
-  lastRun?: { startedAt: string; step: string; finishedAt: string | null }
+  lastRun?: { startedAt: string; step: string; finishedAt: string | null; photos?: PhotoCounts | 'no folder set' }
 }
 
 const json = (body: unknown, maxAge = 60) =>
@@ -41,14 +41,14 @@ const json = (body: unknown, maxAge = 60) =>
 
 export async function refresh(env: Env): Promise<void> {
   const status: Status = (await env.DATA.get<Status>('status', 'json')) ?? { updatedAt: null, lastError: null, lastErrorAt: null }
-  // Each run says where it got to, so a run that's cut off shows on /api/status (the account is on
-  // Workers Paid, so these writes are well inside KV's limits).
+  // Each run says when it started and where it got to, and how many photos it found (counts only: file
+  // names are emails). Two status writes a run; the account is on Workers Paid, well inside KV's limits.
   const run = { startedAt: new Date().toISOString(), step: 'sheet', finishedAt: null as string | null }
   await env.DATA.put('status', JSON.stringify({ ...status, lastRun: run }))
-  const step = async (name: string) => {
+  const step = (name: string) => {
     run.step = name
-    await env.DATA.put('status', JSON.stringify({ ...status, lastRun: run }))
   }
+  let photoCounts: PhotoCounts | 'no folder set' | undefined = env.PHOTOS_FOLDER_ID ? undefined : 'no folder set'
   try {
     const sa = parseServiceAccount(env.GOOGLE_SERVICE_ACCOUNT)
     if (!sa) throw new Error('GOOGLE_SERVICE_ACCOUNT is missing or not a service account key')
@@ -56,25 +56,25 @@ export async function refresh(env: Env): Promise<void> {
     let photos = new Map<string, string>()
     let photoErrors: string[] = []
     if (env.PHOTOS_FOLDER_ID) {
-      await step('photos')
+      step('photos')
       // Photos never hold up the list: a failure here shows as a warning, and cards keep the placeholder.
       try {
-        ;({ photos, errors: photoErrors } = await syncPhotos(env.DATA, sa, env.PHOTOS_FOLDER_ID, photoLinks(rows), candidateEmails(rows)))
+        ;({ photos, errors: photoErrors, counts: photoCounts } = await syncPhotos(env.DATA, sa, env.PHOTOS_FOLDER_ID, photoLinks(rows), candidateEmails(rows)))
       } catch (e) {
         photoErrors = [`Photos: ${String(e)}`]
       }
     }
-    await step('list')
+    step('list')
     const result = await buildInstructors(rows, photos)
     result.warnings.push(...photoErrors.map((message) => ({ row: 0, message })))
     // KV's free tier allows 1,000 writes a day; only write when something changed.
     const previous = await env.DATA.get<Stored>('instructors', 'json')
     const same = previous && JSON.stringify([previous.instructors, previous.warnings]) === JSON.stringify([result.instructors, result.warnings])
     if (!same) await env.DATA.put('instructors', JSON.stringify({ ...result, updatedAt: new Date().toISOString() } satisfies Stored))
-    await env.DATA.put('status', JSON.stringify({ ...status, lastError: null, lastRun: { ...run, step: 'done', finishedAt: new Date().toISOString() } }))
+    await env.DATA.put('status', JSON.stringify({ ...status, lastError: null, lastRun: { ...run, step: 'done', finishedAt: new Date().toISOString(), photos: photoCounts } }))
   } catch (e) {
     const at = new Date().toISOString()
-    await env.DATA.put('status', JSON.stringify({ ...status, lastError: String(e), lastErrorAt: at, lastRun: { ...run, finishedAt: at } }))
+    await env.DATA.put('status', JSON.stringify({ ...status, lastError: String(e), lastErrorAt: at, lastRun: { ...run, finishedAt: at, photos: photoCounts } }))
     throw e
   }
 }

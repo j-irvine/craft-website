@@ -71,6 +71,18 @@ async function download(token: string, fileId: string): Promise<ArrayBuffer> {
   throw new Error(`No thumbnail yet for Drive file ${fileId}`)
 }
 
+/** What the folder holds, for /api/status. Counts only, since file names are emails. */
+export interface PhotoCounts {
+  /** Image files in the folder (and the Professional subfolder). */
+  images: number
+  /** Of those, named by an email address. */
+  namedByEmail: number
+  /** Instructors on the site with a photo found for them. */
+  matched: number
+  /** Photos stored and ready to show. */
+  ready: number
+}
+
 interface PhotoMeta {
   fileId: string
   md5: string
@@ -87,7 +99,7 @@ export async function syncPhotos(
   folderId: string,
   links: Map<string, string>,
   emails: string[],
-): Promise<{ photos: Map<string, string>; errors: string[] }> {
+): Promise<{ photos: Map<string, string>; errors: string[]; counts: PhotoCounts }> {
   const token = await accessToken(sa)
   const top = await listFolder(token, folderId)
   const proFolder = top.find((f) => f.mimeType === 'application/vnd.google-apps.folder' && f.name.trim().toLowerCase() === PRO_FOLDER)
@@ -125,5 +137,12 @@ export async function syncPhotos(
       errors.push(String(e))
     }
   }
-  return { photos, errors }
+  const images = [...top, ...pro].filter((f) => f.mimeType.startsWith('image/'))
+  const counts: PhotoCounts = {
+    images: images.length,
+    namedByEmail: images.filter((f) => emailFromName(f.name)).length,
+    matched: emails.filter((e) => chosen.has(e)).length,
+    ready: photos.size,
+  }
+  return { photos, errors, counts }
 }
