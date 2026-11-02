@@ -125,7 +125,9 @@ export const CSS = `
 .body { flex: none; height: var(--body-h, 268px); padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
 h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .years { margin: 0; font: 700 10px/1.2 var(--font-sub); letter-spacing: .14em; text-transform: uppercase; color: var(--years); }
-.tags { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; max-height: 74px; overflow: hidden; }
+/* fitTags keeps closed cards to 3 rows of tags by counting rows, not by clipping the list at a fixed height
+   (a fixed height cut off the bottom of the "+N more" box on phones). */
+.tags { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .tags li { font: 12px/1 var(--font-body); padding: 5px 7px; background: var(--tag); color: var(--chocolate); }
 .tags li[hidden] { display: none; }
 .tags li.on { background: var(--tag-on); color: var(--cream); }
@@ -157,7 +159,6 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
 .card.open .photo, .card.all-tags .photo { flex: 1 1 64px; min-height: 64px; }
 .card.open .body, .card.all-tags .body { flex: 0 1 auto; height: auto; min-height: 0; overflow-y: auto; }
 .card.open .book, .card.all-tags .book { margin-top: 10px; }
-.card.open .tags, .card.all-tags .tags { max-height: none; }
 .card.open .cert, .card.open .bio { display: block; }
 /* "Any availability": the first card, so it reads as the main way in. Cream on the chocolate section and
    chocolate on the cream one (owners, Oct 30); chocolate on forest. */
@@ -183,7 +184,7 @@ h3 { margin: 0; font: 400 28px/1 var(--font-header); color: var(--name); }
   /* A more compact text area, so the photo gets more of the card (owners, Oct 30: "a little less card"). */
   .body { padding: 12px 14px 14px; gap: 4px; }
   h3 { font-size: 24px; }
-  .tags { margin-top: 2px; gap: 3px; max-height: 62px; }
+  .tags { margin-top: 2px; gap: 3px; }
   .tags li, .tags-toggle button { font-size: 11px; }
   .tags li { padding: 4px 6px; }
   .tags-toggle button { padding: 3px 5px; }

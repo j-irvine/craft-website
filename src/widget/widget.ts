@@ -249,11 +249,14 @@ class FindYourPerson extends HTMLElement {
    * behind a "+N more" tag that opens the full list.
    */
   private fitTags() {
+    // Filtered-out cards are laid out too, so their tags are fitted before fitBodies measures them.
+    this.track().classList.add('measuring')
     this.root.querySelectorAll<HTMLElement>('.card:not(.open):not(.all-tags) .tags').forEach((ul) => {
       ul.querySelector('.tags-toggle')?.remove()
       const items = [...ul.querySelectorAll<HTMLElement>('li')]
       items.forEach((li) => (li.hidden = false))
-      const fits = () => ul.scrollHeight <= ul.clientHeight + 1
+      // Rows by layout position (offsetTop ignores Showit's scaled mobile page), so the last row is never cut.
+      const fits = () => new Set(items.concat(ul.querySelector<HTMLElement>('.tags-toggle') ?? []).filter((li) => !li.hidden).map((li) => li.offsetTop)).size <= 3
       if (fits()) return
       const more = document.createElement('li')
       more.className = 'tags-toggle'
@@ -267,6 +270,7 @@ class FindYourPerson extends HTMLElement {
         if (fits()) break
       }
     })
+    this.track().classList.remove('measuring')
   }
 
   /** The studio photo shown until an instructor has their own (data-placeholder overrides, for previews). */
