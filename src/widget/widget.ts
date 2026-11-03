@@ -138,7 +138,7 @@ class FindYourPerson extends HTMLElement {
     this.shell().removeAttribute('aria-busy')
     this.shell().innerHTML = `
       <div class="filters">
-        <p class="filter-label" id="fyp-focus">Instructor focus<span class="count" role="status">${this.filter ? count : ''}</span></p>
+        <p class="filter-label" id="fyp-focus"><span>Instructor focus</span><span class="count" role="status">${this.filter ? count : ''}</span></p>
         <div class="chips" role="group" aria-labelledby="fyp-focus">
           ${chip(null, 'All')}${offered.map((s) => chip(s.key, s.label)).join('')}
         </div>
