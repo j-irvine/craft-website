@@ -80,7 +80,11 @@ export const CSS = `
 .filters { flex: none; display: flex; flex-direction: column; gap: 8px; }
 /* Says what the chips are (owners, 30 Oct 2026: "All" then "Beginners" didn't read as the instructors' focus),
    and, once one is picked, how many instructors it leaves. */
-.filter-label { margin: 0; height: 15px; display: flex; align-items: baseline; gap: 12px; font: 700 10px/15px var(--font-sub); letter-spacing: .14em; text-transform: uppercase; }
+/* On a narrow phone box (Showit's mobile canvas is 320 px wide, so the box is under 300) "Instructor focus" and
+   "11 of 12 instructors" don't fit on one line: the count moves to its own line instead of wrapping the label
+   into the chips (owners, 3 Nov 2026: the two overlapped the chips). */
+.filter-label { margin: 0; min-height: 15px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; font: 700 10px/15px var(--font-sub); letter-spacing: .14em; text-transform: uppercase; }
+.filter-label > span { white-space: nowrap; }
 .filter-label .count { font: 12px/15px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; flex: none; }
 .chip {
