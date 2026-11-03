@@ -8,6 +8,7 @@ import { cardIssues, fetchServiceHosts, findMismatches, offeredTypes, type HostN
 import { EMPTY_STATE, nextAlerts, sendEmail, type AlertState } from './alerts'
 import { syncPhotos, type PhotoCounts } from './photos'
 import { previewPage } from './preview'
+import { bySoonest, fetchSoonest, soonestDue, usableSoonest, type StoredSoonest } from './availability'
 import PLACEHOLDER from '../assets/placeholder.jpg'
 
 export interface Env {
@@ -83,10 +84,29 @@ export async function refresh(env: Env): Promise<void> {
     // A complete read replaces the names, so instructors who left Arketa stop matching; a partial one adds to them.
     const mergedNames = arketaErrors.length ? { ...previousNames, ...names } : names
     if (JSON.stringify(mergedNames) !== JSON.stringify(previousNames)) await env.DATA.put('arketaNames', JSON.stringify(mergedNames))
+    step('availability')
+    // Who can be booked soonest, to order the cards (owners, 3 Nov 2026). Every 15 minutes, not every run.
+    // A studio that fails keeps its last good read; the list falls back to alphabetical once that's 6 hours old.
+    const storedSoonest = await env.DATA.get<StoredSoonest>('arketaSoonest', 'json')
+    let availabilityErrors: string[] = []
+    if (soonestDue(storedSoonest)) {
+      try {
+        const now = new Date()
+        const { soonest, errors } = await fetchSoonest(mergedHosts, now)
+        availabilityErrors = errors
+        const next: StoredSoonest = { ...storedSoonest }
+        for (const [l, times] of Object.entries(soonest)) next[l as Location] = { readAt: now.toISOString(), times }
+        await env.DATA.put('arketaSoonest', JSON.stringify(next))
+      } catch (e) {
+        availabilityErrors = [`Arketa availability: ${String(e)}`]
+      }
+    }
     step('list')
     const result = await buildInstructors(rows, photos, mergedNames)
     result.warnings.push(...photoErrors.map((message) => ({ row: 0, message })))
     result.warnings.push(...arketaErrors.map((message) => ({ row: 0, message })))
+    // The order just falls back to alphabetical, so this is only logged; /api/status shows when it was last read.
+    if (availabilityErrors.length) console.error('availability', availabilityErrors)
     // KV's free tier allows 1,000 writes a day; only write when something changed.
     const previous = await env.DATA.get<Stored>('instructors', 'json')
     const same = previous && JSON.stringify([previous.instructors, previous.warnings]) === JSON.stringify([result.instructors, result.warnings])
@@ -161,7 +181,9 @@ export default {
       const stored = await env.DATA.get<Stored>('instructors', 'json')
       const hosts = (await env.DATA.get<ServiceHosts>('arketaHosts', 'json')) ?? {}
       const names = (await env.DATA.get<HostNames>('arketaNames', 'json')) ?? {}
-      const here = stored ? forLocation(stored.instructors, location) : []
+      const soonest = usableSoonest(await env.DATA.get<StoredSoonest>('arketaSoonest', 'json'), location)
+      // Whoever can be booked soonest first (owners, 3 Nov 2026), alphabetical without a recent read.
+      const here = bySoonest(stored ? forLocation(stored.instructors, location) : [], soonest)
       // Only the tabs an instructor teaches here. None (not set up here in Arketa) says to email the studio;
       // null (Arketa's instructors never read) falls back to Arketa's picker.
       const known = Object.keys(names).length > 0
@@ -191,6 +213,8 @@ export default {
           lastError: status?.lastError ?? null,
           lastErrorAt: status?.lastErrorAt ?? null,
           lastRun: status?.lastRun ?? null,
+          // When each studio's open times were last read for the card order (times themselves aren't shown).
+          availabilityReadAt: Object.fromEntries(Object.entries((await env.DATA.get<StoredSoonest>('arketaSoonest', 'json')) ?? {}).map(([l, v]) => [l, v?.readAt ?? null])),
         },
         0,
       )
