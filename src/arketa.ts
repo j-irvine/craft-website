@@ -5,7 +5,7 @@
 
 import { ARKETA_SERVICES, LOCATIONS, type Location, type SessionType } from './instructors'
 
-const WIDGET_API = 'https://widget-api-tkaeguucxq-uc.a.run.app/4l7q5eYxQYfsO5lsk9adVa8rRYC3'
+export const WIDGET_API = 'https://widget-api-tkaeguucxq-uc.a.run.app/4l7q5eYxQYfsO5lsk9adVa8rRYC3'
 
 /** Arketa service id to the instructor ("host") ids that offer it. */
 export type ServiceHosts = Record<string, string[]>
