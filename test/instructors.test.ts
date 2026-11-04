@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { arketaBookingUrl, arketaHostId, arketaSessions, matchArketaHost, buildInstructors, candidateEmails, driveFileId, forLocation, nameKey, offeredSpecialties, parseLocations, parseYears, photoLinks, photoNames, yearsLabel } from '../src/instructors'
 import { hostsFromReply, offeredTypes } from '../src/arketa'
-import { choosePhotos, emailFromName, photoOwner } from '../src/photos'
+import { choosePhotos, emailFromName, photoOwner, thumbnailUrl } from '../src/photos'
 
 // The real form's headers (29 Oct 2026), plus the columns being added. Rows below are made up.
 const AREAS = [
@@ -342,5 +342,12 @@ describe('matching instructors to Arketa by name', () => {
       ['Cy', null],
     ])
     expect(warnings).toEqual([{ row: 4, message: expect.stringContaining('No instructor with this name') }])
+  })
+})
+
+describe('thumbnailUrl', () => {
+  it('asks Drive for a 900 px JPEG whatever size the link had', () => {
+    expect(thumbnailUrl('https://lh3.googleusercontent.com/drive-storage/abc=s220')).toBe('https://lh3.googleusercontent.com/drive-storage/abc=s900-rj')
+    expect(thumbnailUrl('https://lh3.googleusercontent.com/drive-storage/abc=s220-c')).toBe('https://lh3.googleusercontent.com/drive-storage/abc=s900-rj')
   })
 })
