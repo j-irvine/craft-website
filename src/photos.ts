@@ -2,12 +2,15 @@
 // Worker, so the page never loads Drive links. Files are named by the instructor's form email
 // ("ana@example.com.jpg") or full name as in the form ("Ana Rivera.jpg", owners, Oct 30); a "Professional" subfolder holds shoot photos, which win; a row's
 // "Photo link" covers photos the bot couldn't name by form email. Google resizes them (the Drive
-// thumbnail at PHOTO_SIZE px, always JPEG, so iPhone HEIC photos work); the card crops with CSS.
+// thumbnail at PHOTO_SIZE px, asked for as JPEG with "-rj": without it a PNG or screenshot comes back as a
+// PNG several times the size, Nov 4; HEIC works too); the card crops with CSS.
 
 import { accessToken, FETCH_TIMEOUT_MS, type ServiceAccount } from './google'
 import { instructorId, nameKey } from './instructors'
 
 export const PHOTO_SIZE = 900
+/** Bumped when how photos are fetched changes, so every stored photo is fetched again (a few per run). */
+export const PHOTO_VERSION = 2
 const PRO_FOLDER = 'professional'
 /** New photos copied per run, so a big first batch is spread over a few runs instead of one long one. */
 export const DOWNLOADS_PER_RUN = 6
@@ -64,14 +67,20 @@ async function listFolder(token: string, folderId: string): Promise<DriveFile[]>
   return files
 }
 
+/** The Drive thumbnail link at PHOTO_SIZE px, always JPEG. */
+export function thumbnailUrl(link: string): string {
+  return link.replace(/=[^=/]*$/, '') + `=s${PHOTO_SIZE}-rj`
+}
+
 async function download(token: string, fileId: string): Promise<ArrayBuffer> {
   const meta = (await (await drive(token, `files/${fileId}?fields=thumbnailLink&supportsAllDrives=true`)).json()) as { thumbnailLink?: string }
   if (meta.thumbnailLink) {
-    const res = await fetch(meta.thumbnailLink.replace(/=s\d+$/, `=s${PHOTO_SIZE}`), {
+    const res = await fetch(thumbnailUrl(meta.thumbnailLink), {
       headers: { authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     })
-    if (res.ok && res.headers.get('content-type')?.startsWith('image/')) return res.arrayBuffer()
+    // Only JPEG: served as .jpg, and anything else would be several times the size.
+    if (res.ok && res.headers.get('content-type')?.startsWith('image/jpeg')) return res.arrayBuffer()
     throw new Error(`Drive thumbnail ${res.status} (${res.headers.get('content-type')}) for file ${fileId}`)
   }
   // No thumbnail yet (Drive makes them shortly after upload): try again on the next run.
@@ -97,6 +106,7 @@ interface PhotoMeta {
   fileId: string
   md5: string
   path: string
+  v?: number
 }
 
 /**
@@ -127,7 +137,7 @@ export async function syncPhotos(
     const md5 = md5s.get(fileId) ?? fileId
     const metaKey = `photo-meta:${email}`
     const meta = await kv.get<PhotoMeta>(metaKey, 'json')
-    if (meta && meta.fileId === fileId && meta.md5 === md5) {
+    if (meta && meta.fileId === fileId && meta.md5 === md5 && meta.v === PHOTO_VERSION) {
       photos.set(email, meta.path)
       continue
     }
@@ -137,10 +147,11 @@ export async function syncPhotos(
     }
     try {
       const image = await download(token, fileId)
-      const name = `${await instructorId(email)}-${(md5 || fileId).slice(0, 8)}.jpg`
+      // The version is in the name, since photos are cached for a year.
+      const name = `${await instructorId(email)}-${(md5 || fileId).slice(0, 8)}-${PHOTO_VERSION}.jpg`
       await kv.put(`photo:${name}`, image)
       if (meta) await kv.delete(`photo:${meta.path.split('/').pop()}`)
-      await kv.put(metaKey, JSON.stringify({ fileId, md5, path: `/photos/${name}` } satisfies PhotoMeta))
+      await kv.put(metaKey, JSON.stringify({ fileId, md5, path: `/photos/${name}`, v: PHOTO_VERSION } satisfies PhotoMeta))
       photos.set(email, `/photos/${name}`)
     } catch (e) {
       // Keep showing the old photo until the new one comes through.
