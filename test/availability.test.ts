@@ -63,12 +63,17 @@ describe('ordering', () => {
     { name: 'Sarah K', arketaHost: 's' },
   ]
 
-  it('puts the soonest first, then everyone else alphabetically', () => {
-    expect(bySoonest(people, { s: '2026-11-05T16:00:00.000Z', a: '2026-11-06T16:00:00.000Z' }).map((p) => p.name)).toEqual(['Sarah K', 'Abby', 'Laura', 'Marija'])
+  it('shows only instructors with an open time, soonest first', () => {
+    expect(bySoonest(people, { s: '2026-11-05T16:00:00.000Z', a: '2026-11-06T16:00:00.000Z' }).map((p) => p.name)).toEqual(['Sarah K', 'Abby'])
   })
 
-  it('stays alphabetical without a read', () => {
+  it('shows everyone alphabetically without a read', () => {
     expect(bySoonest(people, undefined).map((p) => p.name)).toEqual(['Abby', 'Laura', 'Marija', 'Sarah K'])
+  })
+
+  it('shows everyone when the read has nobody with a time, rather than an empty directory', () => {
+    expect(bySoonest(people, {}).map((p) => p.name)).toEqual(['Abby', 'Laura', 'Marija', 'Sarah K'])
+    expect(bySoonest(people, { other: '2026-11-05T16:00:00.000Z' }).map((p) => p.name)).toEqual(['Abby', 'Laura', 'Marija', 'Sarah K'])
   })
 
   it('ignores a read older than 6 hours, and is due again after 15 minutes', () => {

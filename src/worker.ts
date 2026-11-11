@@ -182,7 +182,8 @@ export default {
       const hosts = (await env.DATA.get<ServiceHosts>('arketaHosts', 'json')) ?? {}
       const names = (await env.DATA.get<HostNames>('arketaNames', 'json')) ?? {}
       const soonest = usableSoonest(await env.DATA.get<StoredSoonest>('arketaSoonest', 'json'), location)
-      // Whoever can be booked soonest first (owners, 3 Nov 2026), alphabetical without a recent read.
+      // Only instructors with an open time here, soonest first (owners, 3 and 11 Nov 2026); everyone,
+      // alphabetically, without a recent read.
       const here = bySoonest(stored ? forLocation(stored.instructors, location) : [], soonest)
       // Only the tabs an instructor teaches here. None (not set up here in Arketa) says to email the studio;
       // null (Arketa's instructors never read) falls back to Arketa's picker.

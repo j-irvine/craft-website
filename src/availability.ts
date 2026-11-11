@@ -1,8 +1,9 @@
 // Each instructor's soonest open private or duet time at each studio, so the directory can lead with whoever
 // a client can book soonest (owners asked, 3 Nov 2026). Read from the same undocumented API behind Arketa's
 // own booking widget as src/arketa.ts: one call for which days have times, then one per day with times,
-// which lists every instructor's slots that day. When it fails, the last good copy is kept, and without one
-// the list stays alphabetical.
+// which lists every instructor's slots that day. Since 11 Nov 2026 it also decides who's shown: anyone with
+// nothing open is left off (bySoonest). When it fails, the last good copy is kept, and without one everyone
+// shows, alphabetically.
 
 import { WIDGET_API } from './arketa'
 import { ARKETA_LOCATIONS, ARKETA_SERVICES, LOCATIONS, type Location } from './instructors'
@@ -114,11 +115,16 @@ export async function fetchSoonest(
 }
 
 /**
- * Soonest open time first; anyone with nothing in the next LOOKAHEAD_DAYS (or not matched to Arketa) after,
- * alphabetically. Without any availability read for the studio, the order stays alphabetical.
+ * Only instructors with an open private or duet time at the studio in the next LOOKAHEAD_DAYS, soonest first
+ * (owners, 11 Nov 2026: someone with no availability on Arketa's schedule shouldn't be on the website; 3 Nov:
+ * soonest first). Anyone not matched to Arketa has no times, so is hidden too. Without a usable read for the
+ * studio (Arketa down or the read older than STALE_HOURS), or a read where nobody at all has a time (more
+ * likely a bad read than a fully booked studio), everyone shows, alphabetically, rather than nobody.
  */
 export function bySoonest<T extends { name: string; arketaHost: string | null }>(instructors: T[], soonest: Record<string, string> | undefined): T[] {
   if (!soonest) return instructors
-  const at = (i: T) => (i.arketaHost && soonest[i.arketaHost]) || '￿'
-  return [...instructors].sort((a, b) => at(a).localeCompare(at(b)) || a.name.localeCompare(b.name))
+  const at = (i: T) => (i.arketaHost && soonest[i.arketaHost]) || undefined
+  const bookable = instructors.filter((i) => at(i))
+  if (!bookable.length) return instructors
+  return bookable.sort((a, b) => at(a)!.localeCompare(at(b)!) || a.name.localeCompare(b.name))
 }
