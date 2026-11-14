@@ -2,8 +2,7 @@
 // A cron re-reads the instructor sheet every 5 minutes and keeps the client-safe list in KV.
 
 import { SCHEDULE_JS, WIDGET_JS } from './generated/widget'
-import { fetchSchedule } from './schedule'
-import { smallPhotos } from './schedule-photos'
+import { keepSchedule, servedSchedule, withOrigin } from './schedule-cache'
 import { arketaBookingUrl, arketaSessions, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
 import { cardIssues, fetchServiceHosts, findMismatches, offeredTypes, type HostNames, type ServiceHosts } from './arketa'
@@ -156,8 +155,8 @@ export default {
       })
     }
 
-    // The group class schedule (not on the live site yet). Read from Arketa on request and kept in the
-    // edge cache for a minute, so spots left stay close to live without a request per page view.
+    // The group class schedule. Served at once from the last read (edge cache, else KV) and re-read from
+    // Arketa in the background when that's over a minute old (src/schedule-cache.ts).
     if (url.pathname === '/class-schedule.js') {
       return new Response(SCHEDULE_JS, {
         headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' },
@@ -166,19 +165,8 @@ export default {
     if (url.pathname === '/api/schedule') {
       const location = url.searchParams.get('location')
       if (!isLocation(location)) return json({ error: 'location must be park-slope or uws' })
-      const cache = (caches as unknown as { default: Cache }).default
-      const key = new Request(`${url.origin}/api/schedule?location=${location}`)
-      const hit = await cache.match(key)
-      if (hit) return hit
       try {
-        const { photoSources, ...schedule } = await fetchSchedule(location, LOCATIONS[location])
-        // Small copies of the headshots (src/schedule-photos.ts); any not made yet show initials this time.
-        const { photos, job } = await smallPhotos(env.DATA, env.IMAGES, photoSources)
-        if (job) ctx.waitUntil(job)
-        for (const [name, path] of Object.entries(photos)) if (schedule.instructors[name]) schedule.instructors[name].photo = `${url.origin}${path}`
-        const res = json(schedule, 60)
-        await cache.put(key, res.clone())
-        return res
+        return json(withOrigin(await servedSchedule(env, ctx, location), url.origin), 30)
       } catch (e) {
         console.error('schedule', String(e))
         return new Response(JSON.stringify({ error: 'schedule unavailable' }), { status: 502, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' } })
@@ -273,5 +261,7 @@ export default {
 
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(refresh(env))
+    // A fresh copy of each schedule in KV every 15 minutes, so a visitor never waits on Arketa.
+    if (new Date(_event.scheduledTime).getUTCMinutes() % 15 < 5) ctx.waitUntil(keepSchedule(env))
   },
 } satisfies ExportedHandler<Env>
