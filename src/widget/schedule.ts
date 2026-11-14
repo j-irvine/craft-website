@@ -39,6 +39,12 @@ const checkout = (id: string) => `https://app.arketa.co/craftpilates/schedule/ch
 const CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 const CARET = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
+/**
+ * The client's account on Arketa (sign in, credits, bookings, memberships), one for both studios. Arketa's own
+ * schedule embed had a Login button here, the only way into it from the website (owners, 14 Nov 2026).
+ */
+const ACCOUNT_URL = 'https://app.arketa.co/craftpilates/account'
+
 // Arketa's embed as set up for Craft: Helvetica Neue, chocolate text, terracotta buttons and links, on the
 // page's cream.
 export const SCHEDULE_CSS = `
@@ -103,6 +109,9 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid
 .spots { font-size: 16px; line-height: 22px; text-align: right; }
 .spots .few { color: var(--accent); font-weight: 700; }
 .more { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 16px; padding: 28px 0 8px; }
+.top { flex: none; display: flex; justify-content: flex-end; padding: 0 0 18px; }
+.account { font: 16px/24px var(--font); border-radius: 4px; padding: 5px 12px; border: 1px solid var(--accent); color: var(--accent); text-decoration: none; }
+.account:hover { background: var(--accent); color: var(--on-accent); }
 .show-more, .pick-day { font: 16px/24px var(--font); border-radius: 4px; padding: 6px 16px; cursor: pointer; border: 1px solid var(--accent); background: transparent; color: var(--accent); }
 .show-more:hover, .pick-day:hover { background: var(--accent); color: var(--on-accent); }
 .heading.extra { margin-top: 40px; }
@@ -279,6 +288,7 @@ class ClassSchedule extends HTMLElement {
 
     this.shell().removeAttribute('aria-busy')
     this.shell().innerHTML = `
+      <div class="top"><a class="account" href="${ACCOUNT_URL}" target="_blank" rel="noopener">My Account</a></div>
       <div class="filters">
         <label class="select"><span hidden>Class type</span><select data-filter="type" aria-label="Class type"${this.type ? '' : ' class="unset"'}>${option('', this.type, 'All Class Types')}${types.map((t) => option(t, this.type)).join('')}</select>${CARET}</label>
         <label class="select"><span hidden>Instructor</span><select data-filter="instructor" aria-label="Instructor"${this.instructor ? '' : ' class="unset"'}>${option('', this.instructor, 'All Instructors')}${people.map((p) => option(p, this.instructor)).join('')}</select>${CARET}</label>
