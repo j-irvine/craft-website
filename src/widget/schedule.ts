@@ -153,29 +153,38 @@ class ClassSchedule extends HTMLElement {
 
   /**
    * The page's "Take a class" buttons link to Arketa's schedule for one class type (…/schedule?template=<id>).
-   * Instead, they bring the page up to this schedule with that class type picked (owners, 14 Nov 2026). A class
-   * type with nothing on the schedule in the next two weeks keeps its Arketa link.
+   * Instead, they bring the page up to this schedule with that class type picked (owners, 14 Nov 2026). Once the
+   * schedule loads, each such link that has classes in the next two weeks is pointed here instead (so nothing
+   * else on the page opens Arketa first); one with nothing coming up keeps its Arketa link.
    */
-  private takeAClass = (e: MouseEvent) => {
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
-    const a = (e.target as Element | null)?.closest?.('a[href*="arketa.co"]') as HTMLAnchorElement | null
-    // Only a schedule that's showing (Showit may keep a hidden copy for its other layout).
-    if (!a || !this.data || !this.getClientRects().length) return
-    let typeId: string | null = null
-    try {
-      const url = new URL(a.href)
-      if (!/\/schedule\/?$/.test(url.pathname)) return
-      typeId = url.searchParams.get('template')
-    } catch {
-      return
+  private claimLinks() {
+    if (!this.data) return
+    for (const a of document.querySelectorAll<HTMLAnchorElement>('a[href*="arketa.co"]')) {
+      let typeId: string | null = null
+      try {
+        const url = new URL(a.href)
+        if (!/\/schedule\/?$/.test(url.pathname)) continue
+        typeId = url.searchParams.get('template')
+      } catch {
+        continue
+      }
+      // The class name most used with that type (a one-off class can be renamed in Arketa and keep its type).
+      const names = new Map<string, number>()
+      for (const c of this.upcoming()) if (typeId && c.typeId === typeId && !c.canceled) names.set(c.name, (names.get(c.name) ?? 0) + 1)
+      const name = [...names].sort((x, y) => y[1] - x[1])[0]?.[0]
+      if (!name) continue
+      a.dataset.craftClass = name
+      a.href = '#class-schedule'
+      a.removeAttribute('target')
     }
-    // The class name most used with that type (a one-off class can be renamed in Arketa and keep its type).
-    const names = new Map<string, number>()
-    for (const c of this.upcoming()) if (typeId && c.typeId === typeId && !c.canceled) names.set(c.name, (names.get(c.name) ?? 0) + 1)
-    const name = [...names].sort((x, y) => y[1] - x[1])[0]?.[0]
-    if (!name) return
+  }
+
+  private takeAClass = (e: MouseEvent) => {
+    const a = (e.target as Element | null)?.closest?.('a[data-craft-class]') as HTMLAnchorElement | null
+    // Only a schedule that's showing acts (Showit may keep a hidden copy for its other layout).
+    if (!a || !this.data || !this.getClientRects().length) return
     e.preventDefault()
-    this.type = name
+    this.type = a.dataset.craftClass!
     this.instructor = ''
     this.day = null
     this.more = 0
@@ -198,6 +207,7 @@ class ClassSchedule extends HTMLElement {
         this.data = (await res.json()) as Data
       }
       this.render()
+      this.claimLinks()
     } catch {
       this.shell().innerHTML = `<p class="note">We couldn't load the schedule just now. Please try again in a minute, or <a href="https://app.arketa.co/craftpilates/schedule" target="_blank" rel="noopener">see it on our booking site</a>.</p>`
     }
