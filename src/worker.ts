@@ -3,6 +3,7 @@
 
 import { SCHEDULE_JS, WIDGET_JS } from './generated/widget'
 import { fetchSchedule } from './schedule'
+import { smallPhotos } from './schedule-photos'
 import { arketaBookingUrl, arketaSessions, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
 import { cardIssues, fetchServiceHosts, findMismatches, offeredTypes, type HostNames, type ServiceHosts } from './arketa'
@@ -25,6 +26,8 @@ export interface Env {
   RESEND_API_KEY?: string
   /** Who gets those emails (secret, comma-separated), so addresses stay out of this public repo. */
   ALERT_EMAIL?: string
+  /** Cloudflare Images, to shrink the class schedule's instructor photos (wrangler.jsonc "images"). */
+  IMAGES?: ImagesBinding
 }
 
 interface Stored extends SheetResult {
@@ -143,7 +146,7 @@ async function alertStaff(env: Env, mismatches: ReturnType<typeof findMismatches
 const isLocation = (s: string | null): s is Location => s !== null && s in LOCATIONS
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url)
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', { status: 405 })
 
@@ -168,9 +171,11 @@ export default {
       const hit = await cache.match(key)
       if (hit) return hit
       try {
-        // Instructor photos aren't served yet (TODO before launch: a small copy of each Arketa headshot,
-        // made once and kept in KV), so "View details" shows initials for now.
-        const { photoSources: _full, ...schedule } = await fetchSchedule(location, LOCATIONS[location])
+        const { photoSources, ...schedule } = await fetchSchedule(location, LOCATIONS[location])
+        // Small copies of the headshots (src/schedule-photos.ts); any not made yet show initials this time.
+        const { photos, job } = await smallPhotos(env.DATA, env.IMAGES, photoSources)
+        if (job) ctx.waitUntil(job)
+        for (const [name, path] of Object.entries(photos)) if (schedule.instructors[name]) schedule.instructors[name].photo = `${url.origin}${path}`
         const res = json(schedule, 60)
         await cache.put(key, res.clone())
         return res
@@ -178,6 +183,13 @@ export default {
         console.error('schedule', String(e))
         return new Response(JSON.stringify({ error: 'schedule unavailable' }), { status: 502, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' } })
       }
+    }
+
+    const schedulePhoto = /^\/schedule-photos\/([0-9a-f]{16})\.jpg$/.exec(url.pathname)
+    if (schedulePhoto) {
+      const data = await env.DATA.get(`sphoto:${schedulePhoto[1]}`, 'arrayBuffer')
+      if (!data) return new Response('Not found', { status: 404 })
+      return new Response(data, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000, immutable', 'access-control-allow-origin': '*' } })
     }
 
     const font = /^\/fonts\/(kk-topo|trio-grotesk-bold)\.woff2$/.exec(url.pathname)
