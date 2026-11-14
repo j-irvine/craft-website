@@ -294,8 +294,9 @@ class ClassSchedule extends HTMLElement {
 
   private row(c: ScheduleClass): string {
     const start = new Date(c.start)
-    // "8:00 AM • 50 min" (owners, 14 Nov 2026: no leading zero, time zone or brackets).
-    const time = `${fmt(start, { hour: 'numeric', minute: '2-digit' })} • ${c.minutes} min`
+    // "8:00 AM", with "Marija • 50 min" under the class name (owners, 14 Nov 2026: no leading zero, time zone
+    // or brackets, and the length after the instructor).
+    const time = fmt(start, { hour: 'numeric', minute: '2-digit' })
     const full = c.spotsLeft === 0
     const notes = [
       c.spotsLeft !== null && c.spotsLeft > 0 && c.spotsLeft <= FEW_SPOTS ? `<span class="few">${c.spotsLeft} ${c.spotsLeft === 1 ? 'spot' : 'spots'} left</span>` : '',
@@ -319,7 +320,7 @@ class ClassSchedule extends HTMLElement {
         <div class="info">
           <p>${esc(time)}</p>
           <p class="name">${esc(c.name)}</p>
-          ${c.instructor ? `<p class="who">${esc(c.instructor)}</p>` : ''}
+          <p>${c.instructor ? `<span class="who">${esc(c.instructor)}</span> • ` : ''}${c.minutes} min</p>
           <p>${esc(studio)}</p>
           ${details && !c.canceled ? `<button class="toggle" type="button" data-id="${esc(c.id)}" aria-expanded="${open}">View Details</button>` : ''}
         </div>
