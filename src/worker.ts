@@ -1,7 +1,9 @@
 // The website's Worker: serves the embed script, the public instructor list, and a preview page.
 // A cron re-reads the instructor sheet every 5 minutes and keeps the client-safe list in KV.
 
-import { WIDGET_JS } from './generated/widget'
+import { SCHEDULE_JS, WIDGET_JS } from './generated/widget'
+import { fetchSchedule } from './schedule'
+import { smallPhotos } from './schedule-photos'
 import { arketaBookingUrl, arketaSessions, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
 import { cardIssues, fetchServiceHosts, findMismatches, offeredTypes, type HostNames, type ServiceHosts } from './arketa'
@@ -24,6 +26,8 @@ export interface Env {
   RESEND_API_KEY?: string
   /** Who gets those emails (secret, comma-separated), so addresses stay out of this public repo. */
   ALERT_EMAIL?: string
+  /** Cloudflare Images, to shrink the class schedule's instructor photos (wrangler.jsonc "images"). */
+  IMAGES?: ImagesBinding
 }
 
 interface Stored extends SheetResult {
@@ -142,7 +146,7 @@ async function alertStaff(env: Env, mismatches: ReturnType<typeof findMismatches
 const isLocation = (s: string | null): s is Location => s !== null && s in LOCATIONS
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url)
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', { status: 405 })
 
@@ -150,6 +154,42 @@ export default {
       return new Response(WIDGET_JS, {
         headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' },
       })
+    }
+
+    // The group class schedule (not on the live site yet). Read from Arketa on request and kept in the
+    // edge cache for a minute, so spots left stay close to live without a request per page view.
+    if (url.pathname === '/class-schedule.js') {
+      return new Response(SCHEDULE_JS, {
+        headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' },
+      })
+    }
+    if (url.pathname === '/api/schedule') {
+      const location = url.searchParams.get('location')
+      if (!isLocation(location)) return json({ error: 'location must be park-slope or uws' })
+      const cache = (caches as unknown as { default: Cache }).default
+      const key = new Request(`${url.origin}/api/schedule?location=${location}`)
+      const hit = await cache.match(key)
+      if (hit) return hit
+      try {
+        const { photoSources, ...schedule } = await fetchSchedule(location, LOCATIONS[location])
+        // Small copies of the headshots (src/schedule-photos.ts); any not made yet show initials this time.
+        const { photos, job } = await smallPhotos(env.DATA, env.IMAGES, photoSources)
+        if (job) ctx.waitUntil(job)
+        for (const [name, path] of Object.entries(photos)) if (schedule.instructors[name]) schedule.instructors[name].photo = `${url.origin}${path}`
+        const res = json(schedule, 60)
+        await cache.put(key, res.clone())
+        return res
+      } catch (e) {
+        console.error('schedule', String(e))
+        return new Response(JSON.stringify({ error: 'schedule unavailable' }), { status: 502, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' } })
+      }
+    }
+
+    const schedulePhoto = /^\/schedule-photos\/([0-9a-f]{16})\.jpg$/.exec(url.pathname)
+    if (schedulePhoto) {
+      const data = await env.DATA.get(`sphoto:${schedulePhoto[1]}`, 'arrayBuffer')
+      if (!data) return new Response('Not found', { status: 404 })
+      return new Response(data, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000, immutable', 'access-control-allow-origin': '*' } })
     }
 
     const font = /^\/fonts\/(kk-topo|trio-grotesk-bold)\.woff2$/.exec(url.pathname)

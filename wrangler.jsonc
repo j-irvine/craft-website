@@ -9,6 +9,8 @@
   "kv_namespaces": [{ "binding": "DATA", "id": "REPLACE_WITH_KV_ID" }],
   // assets/placeholder.jpg is bundled into the Worker as bytes.
   "rules": [{ "type": "Data", "globs": ["**/*.jpg"], "fallthrough": false }],
+  // Cloudflare Images: shrinks the class schedule's instructor photos once each (src/schedule-photos.ts).
+  "images": { "binding": "IMAGES" },
   "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true }
 }
