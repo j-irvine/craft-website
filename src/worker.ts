@@ -1,7 +1,8 @@
 // The website's Worker: serves the embed script, the public instructor list, and a preview page.
 // A cron re-reads the instructor sheet every 5 minutes and keeps the client-safe list in KV.
 
-import { WIDGET_JS } from './generated/widget'
+import { SCHEDULE_JS, WIDGET_JS } from './generated/widget'
+import { fetchSchedule } from './schedule'
 import { arketaBookingUrl, arketaSessions, buildInstructors, candidateEmails, photoNames, forLocation, photoLinks, LOCATIONS, offeredSpecialties, type Location, type SheetResult } from './instructors'
 import { parseServiceAccount, readSheet } from './google'
 import { cardIssues, fetchServiceHosts, findMismatches, offeredTypes, type HostNames, type ServiceHosts } from './arketa'
@@ -150,6 +151,30 @@ export default {
       return new Response(WIDGET_JS, {
         headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' },
       })
+    }
+
+    // The group class schedule (not on the live site yet). Read from Arketa on request and kept in the
+    // edge cache for a minute, so spots left stay close to live without a request per page view.
+    if (url.pathname === '/class-schedule.js') {
+      return new Response(SCHEDULE_JS, {
+        headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' },
+      })
+    }
+    if (url.pathname === '/api/schedule') {
+      const location = url.searchParams.get('location')
+      if (!isLocation(location)) return json({ error: 'location must be park-slope or uws' })
+      const cache = (caches as unknown as { default: Cache }).default
+      const key = new Request(`${url.origin}/api/schedule?location=${location}`)
+      const hit = await cache.match(key)
+      if (hit) return hit
+      try {
+        const res = json({ location: LOCATIONS[location], classes: await fetchSchedule(location), readAt: new Date().toISOString() }, 60)
+        await cache.put(key, res.clone())
+        return res
+      } catch (e) {
+        console.error('schedule', String(e))
+        return new Response(JSON.stringify({ error: 'schedule unavailable' }), { status: 502, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' } })
+      }
     }
 
     const font = /^\/fonts\/(kk-topo|trio-grotesk-bold)\.woff2$/.exec(url.pathname)
