@@ -22,6 +22,8 @@ export interface ScheduleClass {
   /** Arketa's class id, for its checkout page. */
   id: string
   name: string
+  /** Arketa's id for the class type (its "service"), which the page's "Take a class" links name. */
+  typeId: string | null
   /** ISO, UTC. */
   start: string
   minutes: number
@@ -99,7 +101,7 @@ export function shortNames(names: string[]): Map<string, string> {
 
 type Raw = {
   id?: unknown; name?: unknown; start_time?: unknown; duration?: unknown; hostName?: unknown; canceled?: unknown
-  display?: unknown; experience_type?: unknown; max_capacity?: unknown; total_booked?: unknown; waitlistLength?: unknown
+  display?: unknown; experience_type?: unknown; service_id?: unknown; max_capacity?: unknown; total_booked?: unknown; waitlistLength?: unknown
   description?: unknown; descriptionHTML?: unknown; hostData?: unknown
 }
 
@@ -138,6 +140,7 @@ export function scheduleFromReply(body: unknown, location: string, now = new Dat
       return {
         id: c.id as string,
         name,
+        typeId: typeof c.service_id === 'string' && c.service_id ? c.service_id : null,
         start: new Date((c.start_time as number) * 1000).toISOString(),
         minutes: typeof c.duration === 'number' ? c.duration : 50,
         instructor,

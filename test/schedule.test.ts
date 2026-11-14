@@ -4,7 +4,7 @@ import { fetchSchedule, scheduleFromReply, shortNames, simpleHtml } from '../src
 const now = new Date('2026-11-14T12:00:00Z')
 const cls = (over: Record<string, unknown>) => ({
   id: 'a', name: 'All Level', start_time: Date.parse('2026-11-14T15:00:00Z') / 1000, duration: 50, hostName: 'Rory',
-  canceled: false, display: 'public', experience_type: 'Class', max_capacity: 9, total_booked: 7, waitlistLength: 0,
+  canceled: false, display: 'public', experience_type: 'Class', service_id: 'svc', max_capacity: 9, total_booked: 7, waitlistLength: 0,
   descriptionHTML: '<p><b><strong style="white-space: pre-wrap;">All Level</strong></b><span> is for every body.</span></p><p><br></p>',
   hostData: [{ profileImageUrl: 'https://example.com/huge.jpg', about: '<p><span style="x">Rory teaches.</span></p>' }],
   ...over,
@@ -14,7 +14,7 @@ const read = (classes: unknown[]) => scheduleFromReply({ data: { classes } }, 'P
 describe('scheduleFromReply', () => {
   it('keeps what clients need, with descriptions and bios once each', () => {
     const s = read([cls({ name: 'Next Level ' }), cls({ id: 'b', name: 'Next Level' })])
-    expect(s.classes[0]).toEqual({ id: 'a', name: 'Next Level', start: '2026-11-14T15:00:00.000Z', minutes: 50, instructor: 'Rory', spotsLeft: 2, waitlist: 0, canceled: false })
+    expect(s.classes[0]).toEqual({ id: 'a', name: 'Next Level', typeId: 'svc', start: '2026-11-14T15:00:00.000Z', minutes: 50, instructor: 'Rory', spotsLeft: 2, waitlist: 0, canceled: false })
     expect(s.descriptions).toEqual({ 'Next Level': '<p><b><strong>All Level</strong></b> is for every body.</p>' })
     expect(s.instructors).toEqual({ Rory: { bio: '<p>Rory teaches.</p>', photo: null } })
     expect(s.photoSources).toEqual({ Rory: 'https://example.com/huge.jpg' })

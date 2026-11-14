@@ -46,6 +46,12 @@ for (const [l, name] of Object.entries(studios)) {
 const attr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 const tag = (l) => `<craft-class-schedule data-location="${l}" data-json="${attr(JSON.stringify(data[l]))}"></craft-class-schedule>`
 
+// The "Take a class" buttons on the live pages (14 Nov 2026), by Arketa class type id.
+const TYPES = {
+  'park-slope': [['All Level', 'yaXVUpTRchWeQ11zjozO'], ['Next Level', 'xGJsoQU81fqj8llZKiOe'], ['Pilates 101', 'QNGeUA41f3X16bMK5Zw9'], ['Pre & Postnatal', 'iYMLEM15AwCwLgYCL1HD'], ['Cardio Pilates', 'uIE6icl7KyeyJ3svKZ7p'], ['Stretch & Lengthen', 'Fb74J2p9t3JAqCErXa0W']],
+  uws: [['All Level', 'yaXVUpTRchWeQ11zjozO'], ['Next Level', 'xGJsoQU81fqj8llZKiOe'], ['Pilates 101', 'QNGeUA41f3X16bMK5Zw9'], ['Pre & Postnatal', 'iYMLEM15AwCwLgYCL1HD']],
+}
+const LOC = { 'park-slope': '67ptpiCjvCsriKuEdItN', uws: 'N80JtYm27xFQhqhv8wam' }
 const fontDir = process.env.FONT_DIR
 const face = (family, weight, file) =>
   `@font-face { font-family: '${family}'; font-weight: ${weight}; src: url(data:font/woff2;base64,${readFileSync(file).toString('base64')}) format('woff2'); }`
@@ -75,17 +81,22 @@ ${fonts}
   .phone-wrap { width: 360px; max-width: 100%; box-sizing: border-box; border: 10px solid #1d1313; border-radius: 28px; padding: 18px 16px 22px; }
   
   [data-studio]:not(.on) { display: none; }
+  .types { display: flex; flex-wrap: wrap; gap: 12px; }
+  .type { background: #762826; color: #ffe5c8; padding: 18px; width: 170px; display: flex; flex-direction: column; gap: 14px; }
+  .type strong { font: 400 22px/1.1 'Craft KK Topo', Epilogue, sans-serif; }
+  .type a { color: inherit; font: 700 10px/1 'Craft Trio Grotesk', Epilogue, sans-serif; letter-spacing: .14em; text-transform: uppercase; border: 1px solid currentColor; padding: 10px; text-align: center; text-decoration: none; }
   @media (max-width: 760px) { .desktop-section { display: none; } }
 </style>
 <header>
   <h1>Group class schedule</h1>
-  <p>Our own schedule, made to look like Arketa's, with the real classes as of ${read}. It shows one day at a time, spots left only when 3 or fewer, and the waitlist. The filters list only the classes and instructors on this studio's schedule. The dashed outline is the Showit embed, which grows and shrinks with the day's classes, as the Arketa one does now. Sign Up opens that class on our booking site, where booking is real, so stop before paying.</p>
+  <p>Our own schedule, made to look like Arketa's, with the real classes as of ${read}. It shows one day at a time, spots left only when 3 or fewer, and the waitlist. The filters list only the classes and instructors on this studio's schedule. The dashed outline is the Showit embed, which grows and shrinks with the day's classes, as the Arketa one does now. Sign Up opens that class on our booking site, where booking is real, so stop before paying. The "Take a class" buttons below the desktop box stand in for the carousel further down each page: they bring you up to the schedule with that class type picked.</p>
   <div class="studios" role="group" aria-label="Studio">
     ${Object.entries(studios).map(([l, n], i) => `<button type="button" data-pick="${l}" aria-pressed="${i === 0}">${n}</button>`).join('')}
   </div>
 </header>
 ${Object.keys(studios).map((l, i) => `<div data-studio="${l}"${i === 0 ? ' class="on"' : ''}>
 <section class="desktop-section"><p class="label">Desktop · 1000 wide, as tall as the day</p><div class="box desktop">${tag(l)}</div></section>
+<section><p class="label">Class types further down the page (Showit's carousel, unchanged)</p><div class="types">${(TYPES[l] ?? []).map(([n, id]) => `<div class="type"><strong>${n}</strong><a href="https://app.arketa.co/iframe/craftpilates/schedule?template=${id}&location=${LOC[l]}" target="_blank">Take a class</a></div>`).join('')}</div></section>
 <section><p class="label">Phone · 320 wide, as tall as the day</p><div class="phone-wrap"><div class="box phone">${tag(l)}</div></div></section>
 </div>`).join('\n')}
 <script>

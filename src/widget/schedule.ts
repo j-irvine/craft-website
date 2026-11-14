@@ -9,6 +9,7 @@
 interface ScheduleClass {
   id: string
   name: string
+  typeId?: string | null
   start: string
   minutes: number
   instructor: string
@@ -141,8 +142,46 @@ class ClassSchedule extends HTMLElement {
   private more = 0
 
   connectedCallback() {
+    document.addEventListener('click', this.takeAClass, true)
     this.root.innerHTML = `<style>${SCHEDULE_CSS}</style><div class="cs" aria-busy="true"><p class="note">Loading the schedule…</p></div>`
     void this.load()
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener('click', this.takeAClass, true)
+  }
+
+  /**
+   * The page's "Take a class" buttons link to Arketa's schedule for one class type (…/schedule?template=<id>).
+   * Instead, they bring the page up to this schedule with that class type picked (owners, 14 Nov 2026). A class
+   * type with nothing on the schedule in the next two weeks keeps its Arketa link.
+   */
+  private takeAClass = (e: MouseEvent) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    const a = (e.target as Element | null)?.closest?.('a[href*="arketa.co"]') as HTMLAnchorElement | null
+    // Only a schedule that's showing (Showit may keep a hidden copy for its other layout).
+    if (!a || !this.data || !this.getClientRects().length) return
+    let typeId: string | null = null
+    try {
+      const url = new URL(a.href)
+      if (!/\/schedule\/?$/.test(url.pathname)) return
+      typeId = url.searchParams.get('template')
+    } catch {
+      return
+    }
+    // The class name most used with that type (a one-off class can be renamed in Arketa and keep its type).
+    const names = new Map<string, number>()
+    for (const c of this.upcoming()) if (typeId && c.typeId === typeId && !c.canceled) names.set(c.name, (names.get(c.name) ?? 0) + 1)
+    const name = [...names].sort((x, y) => y[1] - x[1])[0]?.[0]
+    if (!name) return
+    e.preventDefault()
+    this.type = name
+    this.instructor = ''
+    this.day = null
+    this.more = 0
+    this.render()
+    const first = [...document.querySelectorAll('craft-class-schedule')].find((el) => el.getClientRects().length)
+    if (first === this) window.scrollBy({ top: this.getBoundingClientRect().top - 80, behavior: 'smooth' })
   }
 
   private shell() {
@@ -294,8 +333,8 @@ class ClassSchedule extends HTMLElement {
 
   private row(c: ScheduleClass): string {
     const start = new Date(c.start)
-    // "8:00 AM", with "Marija • 50 min" under the class name (owners, 14 Nov 2026: no leading zero, time zone
-    // or brackets, and the length after the instructor).
+    // "8:00 AM", with "Park Slope • 50 min" under the instructor (owners, 14 Nov 2026: no leading zero, time
+    // zone or brackets, and the length after the studio).
     const time = fmt(start, { hour: 'numeric', minute: '2-digit' })
     const full = c.spotsLeft === 0
     const notes = [
@@ -320,8 +359,8 @@ class ClassSchedule extends HTMLElement {
         <div class="info">
           <p>${esc(time)}</p>
           <p class="name">${esc(c.name)}</p>
-          <p>${c.instructor ? `<span class="who">${esc(c.instructor)}</span> • ` : ''}${c.minutes} min</p>
-          <p>${esc(studio)}</p>
+          ${c.instructor ? `<p class="who">${esc(c.instructor)}</p>` : ''}
+          <p>${esc(studio)} • ${c.minutes} min</p>
           ${details && !c.canceled ? `<button class="toggle" type="button" data-id="${esc(c.id)}" aria-expanded="${open}">View Details</button>` : ''}
         </div>
         ${
