@@ -34,7 +34,6 @@ const fmt = (d: Date, o: Intl.DateTimeFormatOptions) => d.toLocaleString('en-US'
 const noon = (key: string) => new Date(`${key}T17:00:00Z`)
 const addDays = (key: string, n: number) => dayKey(new Date(noon(key).getTime() + n * 86_400_000))
 const checkout = (id: string) => `https://app.arketa.co/craftpilates/schedule/checkout/${encodeURIComponent(id)}`
-const STUDIO_LINE: Record<string, string> = { 'Park Slope': 'Park Slope • NY', 'Upper West Side': 'Upper West Side • NY' }
 
 const CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 const CARET = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
@@ -97,8 +96,17 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid
 .who { font-weight: 700; }
 .toggle { margin-top: 8px; font: inherit; color: var(--accent); background: none; border: 1px solid transparent; border-radius: 4px; padding: 0; cursor: pointer; }
 .toggle:hover { text-decoration: underline; }
-.act { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-bottom: 26px; }
-.spots { font-size: 14px; line-height: 18px; text-align: right; }
+.act { flex: none; margin-bottom: 32px; }
+/* Spots left (3 or fewer) and the waitlist sit in the class's own lines, under the studio (owners, 14 Nov 2026:
+   beside the button they looked out of place). */
+.spots { margin-top: 2px !important; }
+.spots .few { color: var(--accent); font-weight: 700; }
+.more { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 16px; padding: 28px 0 8px; }
+.more button { font: 16px/24px var(--font); border-radius: 4px; padding: 6px 14px; cursor: pointer; border: 1px solid var(--accent); }
+.next-day { background: var(--accent); color: var(--on-accent); }
+.next-day:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.to-top { background: transparent; color: var(--accent); }
+.to-top:hover { background: rgba(181, 72, 38, .08); }
 .book { display: inline-block; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); text-decoration: none; white-space: nowrap; }
 .book:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 .canceled { color: var(--text); font-weight: 700; margin-bottom: 30px; }
@@ -118,7 +126,7 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid
   .day .num { width: 34px; height: 34px; line-height: 34px; font-size: 17px; }
   .heading { font-size: 19px; letter-spacing: 2.4px; flex-wrap: wrap; }
   .cls { padding: 18px 2px 16px; }
-  .act { margin-bottom: 30px; }
+  .act { margin-bottom: 32px; }
 }
 `
 
@@ -194,6 +202,7 @@ class ClassSchedule extends HTMLElement {
     const filtered = Boolean(this.type || this.instructor)
     const range = `${fmt(noon(week[0]), { month: 'long', day: 'numeric' })} — ${fmt(noon(week[6]), { month: 'long', day: 'numeric' })}`
     const shortRange = `${fmt(noon(week[0]), { month: 'short', day: 'numeric' })} — ${fmt(noon(week[6]), { month: 'short', day: 'numeric' })}`
+    const nextDay = flat.find((d) => d > this.day! && bookable(d))
     const count = list.filter((c) => !c.canceled).length
 
     this.shell().removeAttribute('aria-busy')
@@ -222,12 +231,21 @@ class ClassSchedule extends HTMLElement {
       }</h3>
       <div class="list">
         ${list.length ? list.map((c) => this.row(c)).join('') : `<p class="empty">${filtered ? 'No matching classes in the next two weeks.' : 'No classes left to book this day.'}</p>`}
-      </div>`
+      </div>
+      ${
+        // The list ends with the day, so say so (owners, 14 Nov 2026: Arketa's ends with "Show More"): the next
+        // day with classes, or back up to the days to pick another.
+        nextDay || list.length > 3
+          ? `<div class="more">${nextDay ? `<button class="next-day" type="button" data-day="${nextDay}">${esc(fmt(noon(nextDay), { weekday: 'long' }))}'s classes</button>` : ''}<button class="to-top" type="button">Pick another day</button></div>`
+          : ''
+      }`
 
     const on = (sel: string, fn: (el: HTMLElement) => void) => this.shell().querySelectorAll<HTMLElement>(sel).forEach((el) => el.addEventListener('click', () => fn(el)))
     on('.day', (b) => { this.day = b.dataset.day!; this.render(); this.keepInView() })
     on('.prev', () => this.jumpWeek(this.week - 1))
     on('.next', () => this.jumpWeek(this.week + 1))
+    on('.next-day', (b) => { this.day = b.dataset.day!; this.render(); this.toDays() })
+    on('.to-top', () => this.toDays())
     on('.clear', () => { this.type = ''; this.instructor = ''; this.render() })
     on('.toggle', (b) => {
       const id = b.dataset.id!
@@ -244,6 +262,14 @@ class ClassSchedule extends HTMLElement {
         this.render()
       }),
     )
+  }
+
+  /** Scrolls the page back up to the day picker. */
+  private toDays() {
+    const days = this.root.querySelector('.days') as HTMLElement | null
+    if (!days) return
+    const top = days.getBoundingClientRect().top
+    if (top < 0 || top > window.innerHeight) window.scrollBy({ top: top - 120, behavior: 'smooth' })
   }
 
   /** After a shorter day replaces a longer one, the page may be scrolled past the schedule: bring its top back. */
@@ -267,7 +293,7 @@ class ClassSchedule extends HTMLElement {
     const time = `${fmt(start, { hour: '2-digit', minute: '2-digit' })} ${start.toLocaleTimeString('en-US', { timeZone: TZ, timeZoneName: 'short' }).split(' ').pop()} • (${c.minutes} min)`
     const full = c.spotsLeft === 0
     const notes = [
-      c.spotsLeft !== null && c.spotsLeft > 0 && c.spotsLeft <= FEW_SPOTS ? `${c.spotsLeft} ${c.spotsLeft === 1 ? 'spot' : 'spots'} left` : '',
+      c.spotsLeft !== null && c.spotsLeft > 0 && c.spotsLeft <= FEW_SPOTS ? `<span class="few">${c.spotsLeft} ${c.spotsLeft === 1 ? 'spot' : 'spots'} left</span>` : '',
       c.waitlist > 0 ? `${c.waitlist} on waitlist` : '',
     ].filter(Boolean)
     const studio = this.data?.location ?? ''
@@ -289,13 +315,14 @@ class ClassSchedule extends HTMLElement {
           <p>${esc(time)}</p>
           <p class="name">${esc(c.name)}</p>
           ${c.instructor ? `<p class="who">${esc(c.instructor)}</p>` : ''}
-          <p>${esc(STUDIO_LINE[studio] ?? studio)}</p>
+          <p>${esc(studio)}</p>
+          ${notes.length ? `<p class="spots">${notes.join(' • ')}</p>` : ''}
           ${details && !c.canceled ? `<button class="toggle" type="button" data-id="${esc(c.id)}" aria-expanded="${open}">View Details</button>` : ''}
         </div>
         ${
           c.canceled
             ? '<div class="canceled">Canceled</div>'
-            : `<div class="act">${notes.length ? `<span class="spots">${notes.map(esc).join('<br>')}</span>` : ''}<a class="book" href="${checkout(c.id)}" target="_blank" rel="noopener" aria-label="${esc(label)}">${full ? 'Waitlist' : 'Sign Up'}</a></div>`
+            : `<div class="act"><a class="book" href="${checkout(c.id)}" target="_blank" rel="noopener" aria-label="${esc(label)}">${full ? 'Waitlist' : 'Sign Up'}</a></div>`
         }
       </div>
       ${c.canceled ? '' : details}
