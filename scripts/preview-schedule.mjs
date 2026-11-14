@@ -3,7 +3,10 @@
 // the live site. Also dist/schedule-artifact.html, the same page as a claude.ai Artifact body.
 // Usage: node scripts/preview-schedule.mjs  (FONT_DIR=<studio-app>/brand/fonts/Type for the brand fonts)
 import { build } from 'esbuild'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const bundle = async (entry, format) =>
   (await build({ entryPoints: [entry], bundle: true, format, target: 'es2020', write: false, minify: format === 'iife' })).outputFiles[0].text
@@ -12,9 +15,36 @@ const { fetchSchedule } = await import(`data:text/javascript;base64,${Buffer.fro
 
 const studios = { 'park-slope': 'Park Slope', uws: 'Upper West Side' }
 const data = {}
-for (const [l, name] of Object.entries(studios)) data[l] = { location: name, classes: await fetchSchedule(l) }
+// Each instructor's photo, shrunk to 120 px (shown at 60) and inlined. Needs python3 with Pillow.
+const dir = mkdtempSync(join(tmpdir(), 'headshots-'))
+const small = new Map()
+const shrink = async (src) => {
+  if (small.has(src)) return small.get(src)
+  let out = null
+  try {
+    const res = await fetch(src)
+    const file = join(dir, `${small.size}`)
+    writeFileSync(file, Buffer.from(await res.arrayBuffer()))
+    execFileSync('python3', ['-I', '-c', `import sys
+from PIL import Image, ImageOps
+im = ImageOps.exif_transpose(Image.open(sys.argv[1])).convert('RGB')
+w, h = im.size; s = min(w, h)
+im = im.crop(((w - s) // 2, int((h - s) * .25), (w - s) // 2 + s, int((h - s) * .25) + s)).resize((120, 120), Image.LANCZOS)
+im.save(sys.argv[1] + '.jpg', quality=80)`, file])
+    out = `data:image/jpeg;base64,${readFileSync(`${file}.jpg`).toString('base64')}`
+  } catch (e) {
+    console.error('photo', String(e))
+  }
+  small.set(src, out)
+  return out
+}
+for (const [l, name] of Object.entries(studios)) {
+  const { photoSources, ...schedule } = await fetchSchedule(l, name)
+  for (const [who, src] of Object.entries(photoSources)) schedule.instructors[who].photo = await shrink(src)
+  data[l] = schedule
+}
 const attr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-const tag = (l) => `<craft-class-schedule data-location="${l}" data-fonts="none" data-json="${attr(JSON.stringify(data[l]))}"></craft-class-schedule>`
+const tag = (l) => `<craft-class-schedule data-location="${l}" data-json="${attr(JSON.stringify(data[l]))}"></craft-class-schedule>`
 
 const fontDir = process.env.FONT_DIR
 const face = (family, weight, file) =>
@@ -28,7 +58,7 @@ const body = `
 <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700&display=swap" rel="stylesheet">
 ${fonts}
 <style>
-  :root { color-scheme: light; --bg: #fcf3e8; --fg: #352222; }
+  :root { color-scheme: light; --bg: #fcf3e8; --fg: #352222; --desktop-h: ${process.env.DESKTOP_H ?? 1500}px; --phone-h: ${process.env.PHONE_H ?? 1700}px; }
   body { margin: 0; background: var(--bg); color: var(--fg); font-family: Epilogue, system-ui, sans-serif; }
   header, section { max-width: 1100px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
   header { padding-block: 28px 4px; }
@@ -41,22 +71,22 @@ ${fonts}
   section { padding-block: 18px; }
   .label { margin: 8px 0 14px; opacity: .8; }
   .box { outline: 1px dashed rgba(53,34,34,.45); outline-offset: 6px; }
-  .desktop { height: 640px; max-width: 1000px; }
+  .desktop { max-width: 1000px; }
   .phone-wrap { width: 360px; max-width: 100%; box-sizing: border-box; border: 10px solid #1d1313; border-radius: 28px; padding: 18px 16px 22px; }
-  .phone { height: 680px; }
+  
   [data-studio]:not(.on) { display: none; }
   @media (max-width: 760px) { .desktop-section { display: none; } }
 </style>
 <header>
   <h1>Group class schedule</h1>
-  <p>Our own schedule section, in place of Arketa's, with the real classes as of ${read}. One day at a time, so the page stays short. The dashed outline is the Showit embed box. Book opens that class on our booking site, where booking is real, so stop before paying.</p>
+  <p>Our own schedule, made to look like Arketa's, with the real classes as of ${read}. It shows one day at a time, spots left only when 3 or fewer, and the waitlist. The filters list only the classes and instructors on this studio's schedule. The dashed outline is the Showit embed, which grows and shrinks with the day's classes, as the Arketa one does now. Sign Up opens that class on our booking site, where booking is real, so stop before paying.</p>
   <div class="studios" role="group" aria-label="Studio">
     ${Object.entries(studios).map(([l, n], i) => `<button type="button" data-pick="${l}" aria-pressed="${i === 0}">${n}</button>`).join('')}
   </div>
 </header>
 ${Object.keys(studios).map((l, i) => `<div data-studio="${l}"${i === 0 ? ' class="on"' : ''}>
-<section class="desktop-section"><p class="label">Desktop · 1000 × 640 box</p><div class="box desktop">${tag(l)}</div></section>
-<section><p class="label">Phone · 320 × 680 box</p><div class="phone-wrap"><div class="box phone">${tag(l)}</div></div></section>
+<section class="desktop-section"><p class="label">Desktop · 1000 wide, as tall as the day</p><div class="box desktop">${tag(l)}</div></section>
+<section><p class="label">Phone · 320 wide, as tall as the day</p><div class="phone-wrap"><div class="box phone">${tag(l)}</div></div></section>
 </div>`).join('\n')}
 <script>
   document.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {

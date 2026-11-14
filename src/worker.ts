@@ -168,7 +168,10 @@ export default {
       const hit = await cache.match(key)
       if (hit) return hit
       try {
-        const res = json({ location: LOCATIONS[location], classes: await fetchSchedule(location), readAt: new Date().toISOString() }, 60)
+        // Instructor photos aren't served yet (TODO before launch: a small copy of each Arketa headshot,
+        // made once and kept in KV), so "View details" shows initials for now.
+        const { photoSources: _full, ...schedule } = await fetchSchedule(location, LOCATIONS[location])
+        const res = json(schedule, 60)
         await cache.put(key, res.clone())
         return res
       } catch (e) {

@@ -1,10 +1,10 @@
 // "Class schedule": the group class timetable embedded on the two group classes pages, in place of Arketa's
-// schedule embed. One day at a time, so the page stays short; class and instructor filters list only what's
-// on this studio's schedule. Showit holds one line:
+// schedule embed. It looks like Arketa's embed (owners, 14 Nov 2026: "much closer to how it looks in the
+// regular Arketa embed"), with these changes: one day at a time, so the page stays short; no location filter
+// (the snippet picks the studio); class and instructor filters with only what's on this studio's schedule;
+// spots left only when 3 or fewer, and how many are on the waitlist. Showit holds one line:
 //   <script src="https://…/class-schedule.js" data-location="park-slope"></script>
-// Book opens Arketa's page for the class, where the client signs in and pays, as the old embed did.
-
-import { EPILOGUE, fontFaces } from './styles'
+// Sign Up opens Arketa's page for the class, where the client signs in and pays, as the old embed did.
 
 interface ScheduleClass {
   id: string
@@ -14,125 +14,111 @@ interface ScheduleClass {
   instructor: string
   spotsLeft: number | null
   waitlist: number
+  canceled: boolean
 }
 
 interface Data {
   location: string
   classes: ScheduleClass[]
+  descriptions: Record<string, string>
+  instructors: Record<string, { bio: string | null; photo: string | null }>
 }
 
+/** Spots left are shown only from this few down (owners, 14 Nov 2026). */
+const FEW_SPOTS = 3
 const TZ = 'America/New_York'
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
-const dayKey = (iso: string | Date) => new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ })
+const dayKey = (d: string | Date) => new Date(d).toLocaleDateString('en-CA', { timeZone: TZ })
 const fmt = (d: Date, o: Intl.DateTimeFormatOptions) => d.toLocaleString('en-US', { timeZone: TZ, ...o })
-/** Noon on a YYYY-MM-DD day, so formatting it in New York never slips a day. */
+/** Noon (New York) on a YYYY-MM-DD day, so formatting it never slips a day. */
 const noon = (key: string) => new Date(`${key}T17:00:00Z`)
+const addDays = (key: string, n: number) => dayKey(new Date(noon(key).getTime() + n * 86_400_000))
 const checkout = (id: string) => `https://app.arketa.co/craftpilates/schedule/checkout/${encodeURIComponent(id)}`
+const STUDIO_LINE: Record<string, string> = { 'Park Slope': 'Park Slope • NY', 'Upper West Side': 'Upper West Side • NY' }
 
-const CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>'
+const CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+const CARET = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
+// Arketa's embed as set up for Craft: Helvetica Neue, chocolate text, terracotta buttons and links, on the
+// page's cream.
 export const SCHEDULE_CSS = `
 :host {
-  --mint: #c0caaf; --forest: #485c3d; --terracotta: #b64726; --chocolate: #352222; --cream: #ffe5c8; --peach: #e59d6d;
-  --font-header: 'Craft KK Topo', 'KK Topo', 'Epilogue', system-ui, sans-serif;
-  --font-sub: 'Craft Trio Grotesk', 'Trio Grotesk', 'Epilogue', system-ui, sans-serif;
-  --font-body: 'Epilogue', system-ui, sans-serif;
-  --text: var(--chocolate);
-  --muted: color-mix(in srgb, var(--chocolate) 68%, var(--cream));
-  --line: color-mix(in srgb, var(--chocolate) 40%, transparent);
-  --on-bg: var(--chocolate); --on-text: var(--cream);
-  --card: var(--cream); --card-text: var(--chocolate);
-  --title: var(--terracotta);
-  --cta: var(--chocolate); --cta-hover: var(--terracotta);
-  display: block; height: 100%; min-height: 420px; color: var(--text); font-family: var(--font-body);
+  --text: #352222; --accent: #b54826; --accent-hover: #963a1e; --on-accent: #fff;
+  --muted: #a39a95; --line: rgba(53, 34, 34, .14); --field-line: #ccc; --placeholder: #808080;
+  --font: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;
+  display: block; color: var(--text); font: 16px/24px var(--font);
 }
-:host([data-theme='chocolate']), :host([data-theme='forest']) {
-  --text: var(--cream);
-  --muted: color-mix(in srgb, var(--cream) 72%, var(--chocolate));
-  --line: color-mix(in srgb, var(--cream) 55%, transparent);
-  --on-bg: var(--cream); --on-text: var(--chocolate);
-  --title: var(--cream);
-}
+/* data-height="fill": fills a fixed-height box and scrolls inside it. By default it's as tall as the day's
+   classes, since the Showit section it sits in grows with it (the old Arketa embed did the same). */
+:host([data-height='fill']) { height: 100%; min-height: 420px; }
 * { box-sizing: border-box; }
-.cs { container-type: inline-size; height: 100%; display: flex; flex-direction: column; gap: 14px; }
-.note { margin: auto; padding: 16px; text-align: center; color: var(--muted); max-width: 34ch; line-height: 1.45; }
-.label { font: 700 10px/1 var(--font-sub); letter-spacing: .14em; text-transform: uppercase; }
+.cs { container-type: inline-size; display: flex; flex-direction: column; min-height: 300px; }
+:host([data-height='fill']) .cs { height: 100%; }
+.note { margin: auto; padding: 16px; text-align: center; max-width: 36ch; }
+.note a { color: var(--accent); }
 
-.top { flex: none; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
-.week { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.arrow { flex: none; width: 36px; height: 52px; border: none; background: transparent; color: inherit; cursor: pointer; display: grid; place-items: center; padding: 0; }
-.arrow svg { width: 18px; height: 18px; }
-.arrow.prev svg { transform: rotate(180deg); }
-.arrow:disabled { opacity: .25; cursor: default; }
-.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.day {
-  width: 52px; height: 52px; border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 0; font-family: var(--font-body);
-}
-.day .dow { font: 700 9px/1 var(--font-sub); letter-spacing: .14em; text-transform: uppercase; }
-.day .num { font-size: 17px; line-height: 1; }
-.day:hover { border-color: var(--line); }
-.day[aria-pressed='true'] { background: var(--on-bg); color: var(--on-text); border-color: var(--on-bg); }
-.day:disabled { opacity: .3; cursor: default; border-color: transparent; }
-.filters { display: flex; gap: 10px; }
-.filter { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.filters { flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 290px)); justify-content: center; gap: 12px 30px; padding: 0 0 22px; }
 .select { position: relative; }
 select {
-  appearance: none; -webkit-appearance: none; width: 210px; max-width: 100%; height: 40px; border-radius: 0;
-  border: 1px solid var(--line); background: transparent; color: inherit; padding: 0 34px 0 12px;
-  font: 14px/1 var(--font-body); cursor: pointer;
+  appearance: none; -webkit-appearance: none; width: 100%; height: 38px; border: 1px solid var(--field-line); border-radius: 4px;
+  background: #fff; color: var(--text); padding: 0 46px 0 10px; font: 16px/1 var(--font); cursor: pointer;
 }
-select option { color: var(--chocolate); background: #fff; }
-select:hover { border-color: currentColor; }
-.select svg { position: absolute; right: 12px; top: 13px; width: 14px; height: 14px; transform: rotate(90deg); pointer-events: none; }
-button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--peach); outline-offset: 2px; }
+select.unset { color: var(--placeholder); }
+select option { color: var(--text); }
+.select::after { content: ''; position: absolute; right: 38px; top: 8px; bottom: 8px; width: 1px; background: var(--field-line); pointer-events: none; }
+.select svg { position: absolute; right: 10px; top: 9px; width: 20px; height: 20px; color: var(--field-line); pointer-events: none; }
+select:hover { border-color: #b3b3b3; }
+button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.heading { flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
-.heading h3 { margin: 0; font: 400 26px/1.1 var(--font-header); color: var(--title); }
-.heading .count { color: var(--muted); font-size: 13px; white-space: nowrap; }
-.clear { font: inherit; color: inherit; background: none; border: none; padding: 0; text-decoration: underline; cursor: pointer; }
+.week { flex: none; display: flex; justify-content: center; align-items: center; gap: 4px; font-size: 18px; line-height: 27px; }
+.week .short { display: none; }
+.arrow { width: 32px; height: 32px; border: none; background: none; color: var(--text); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.arrow svg { width: 22px; height: 22px; }
+.arrow.prev svg { transform: rotate(180deg); }
+.arrow[hidden] { visibility: hidden; display: grid !important; }
+.days { flex: none; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 14px 0 34px; }
+.day { border: none; background: none; color: var(--text); font: 18px/27px var(--font); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; }
+.day .num { width: 40px; height: 40px; line-height: 40px; border-radius: 50%; text-align: center; }
+.day:hover:not(:disabled) .num { background: rgba(181, 72, 38, .1); }
+.day[aria-pressed='true'] .num { background: var(--accent); color: var(--on-accent); }
+.day:disabled { color: var(--muted); cursor: default; }
 
-.list { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 8px 16px; align-content: start; grid-auto-flow: column; scrollbar-width: thin; padding-bottom: 2px; }
-.row { display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; align-items: center; gap: 12px; background: var(--card); color: var(--card-text); padding: 10px 10px 10px 14px; min-height: 64px; }
-.time { font-weight: 700; font-size: 15px; line-height: 1.2; white-space: nowrap; }
-.time small { display: block; font-weight: 400; font-size: 12px; color: color-mix(in srgb, var(--chocolate) 65%, var(--cream)); margin-top: 3px; }
-.what { min-width: 0; }
-.name { font: 700 11px/1.3 var(--font-sub); letter-spacing: .12em; text-transform: uppercase; }
-.who { font-size: 13px; margin-top: 4px; }
-.side { display: flex; align-items: center; gap: 12px; }
-.spots { font-size: 12px; color: color-mix(in srgb, var(--chocolate) 70%, var(--cream)); text-align: right; white-space: nowrap; }
-.spots.low { color: var(--terracotta); font-weight: 700; }
-.book {
-  display: inline-flex; align-items: center; justify-content: center; min-width: 104px; height: 40px; padding: 0 14px;
-  font: 700 10px/1 var(--font-sub); letter-spacing: .14em; text-transform: uppercase; text-decoration: none;
-  background: var(--cta); color: var(--cream); border: 1px solid var(--cta);
-}
-.book:hover { background: var(--cta-hover); border-color: var(--cta-hover); }
-.book.wait { background: transparent; color: var(--chocolate); }
-.book.wait:hover { background: var(--chocolate); color: var(--cream); border-color: var(--chocolate); }
-.empty { color: var(--muted); padding: 20px 0; }
+.heading { flex: none; margin: 0 0 0; padding: 0 0 10px; border-bottom: 1px solid var(--line); font: 500 20px/24px var(--font); letter-spacing: 3.2px; font-variant: all-petite-caps; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.heading .count { font: 14px/20px var(--font); letter-spacing: 0; font-variant: normal; color: var(--text); white-space: nowrap; }
+.clear { font: inherit; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; }
 
-/* Phone: the day strip and filters each take a full row; classes in one column. */
-@container (max-width: 700px) {
-  .top { flex-direction: column; align-items: stretch; gap: 12px; }
-  .week { justify-content: space-between; }
-  .arrow { width: 26px; }
-  .days { flex: 1; gap: 2px; }
-  .day { width: auto; height: 50px; }
-  .filters { gap: 8px; }
-  .filter { flex: 1; }
-  select { width: 100%; font-size: 13px; padding-left: 10px; }
-  .heading h3 { font-size: 22px; }
-  .list { display: flex; flex-direction: column; }
-  .row { flex: none; }
-  .row { grid-template-columns: 60px minmax(0, 1fr) auto; grid-template-areas: 'time what book' 'time spots book'; gap: 4px 10px; padding: 12px 10px 12px 12px; }
-  .time { grid-area: time; align-self: start; font-size: 14px; }
-  .what { grid-area: what; }
-  .side { display: contents; }
-  .spots { grid-area: spots; text-align: left; }
-  .book { grid-area: book; }
-  .book { width: 92px; min-width: 0; height: 40px; padding: 0; letter-spacing: .12em; }
-  .name { letter-spacing: .08em; }
+.list { flex: 1; min-height: 0; }
+:host([data-height='fill']) .list { overflow-y: auto; scrollbar-width: thin; }
+.cls { padding: 22px 5px 20px; border-bottom: 1px solid var(--line); }
+.row { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.info { min-width: 0; }
+.info p { margin: 0; }
+.name { font-size: 20px; font-weight: 500; margin: 1px 0 4px !important; }
+.who { font-weight: 700; }
+.toggle { margin-top: 8px; font: inherit; color: var(--accent); background: none; border: 1px solid transparent; border-radius: 4px; padding: 0; cursor: pointer; }
+.toggle:hover { text-decoration: underline; }
+.act { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-bottom: 26px; }
+.spots { font-size: 14px; line-height: 18px; text-align: right; }
+.book { display: inline-block; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); text-decoration: none; white-space: nowrap; }
+.book:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.canceled { color: var(--text); font-weight: 700; margin-bottom: 30px; }
+.details { padding-top: 16px; }
+.details p { margin: 0 0 12px; }
+.details ul, .details ol { margin: 0 0 12px; padding-left: 22px; }
+.person { display: flex; align-items: center; gap: 8px; margin: 20px 0 10px; font-weight: 700; }
+.photo { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; object-position: center 25%; background: #e8dccf; flex: none; display: grid; place-items: center; font-weight: 500; color: var(--text); }
+.empty { padding: 24px 5px; }
+
+@container (max-width: 600px) {
+  .filters { grid-template-columns: minmax(0, 1fr); padding-bottom: 18px; }
+  .days { padding: 8px 0 26px; }
+  .week .long { display: none; }
+  .week .short { display: inline; }
+  .day { font-size: 16px; }
+  .day .num { width: 34px; height: 34px; line-height: 34px; font-size: 17px; }
+  .heading { font-size: 19px; letter-spacing: 2.4px; flex-wrap: wrap; }
+  .cls { padding: 18px 2px 16px; }
+  .act { margin-bottom: 30px; }
 }
 `
 
@@ -143,9 +129,9 @@ class ClassSchedule extends HTMLElement {
   private week = 0
   private type = ''
   private instructor = ''
+  private open = new Set<string>()
 
   connectedCallback() {
-    if (this.getAttribute('data-fonts') !== 'none') loadFonts(this.getAttribute('data-api') ?? '')
     this.root.innerHTML = `<style>${SCHEDULE_CSS}</style><div class="cs" aria-busy="true"><p class="note">Loading the schedule…</p></div>`
     void this.load()
   }
@@ -165,82 +151,92 @@ class ClassSchedule extends HTMLElement {
       }
       this.render()
     } catch {
-      this.shell().innerHTML = `<p class="note">We couldn't load the schedule just now. Please try again in a minute, or <a href="https://app.arketa.co/craftpilates/schedule">see it on our booking site</a>.</p>`
+      this.shell().innerHTML = `<p class="note">We couldn't load the schedule just now. Please try again in a minute, or <a href="https://app.arketa.co/craftpilates/schedule" target="_blank" rel="noopener">see it on our booking site</a>.</p>`
     }
   }
 
-  /** The 14 days shown, from today (or the preview's first day). */
-  private days(): string[] {
-    const first = this.getAttribute('data-today') ?? dayKey(new Date())
-    return Array.from({ length: 14 }, (_, i) => dayKey(new Date(noon(first).getTime() + i * 86_400_000)))
-  }
-
+  /** Classes still to come (a cancelled one stays, marked, as on Arketa). */
   private upcoming(): ScheduleClass[] {
-    const now = this.getAttribute('data-now') ? Date.parse(this.getAttribute('data-now')!) : Date.now()
-    return (this.data?.classes ?? []).filter((c) => Date.parse(c.start) > now)
+    return (this.data?.classes ?? []).filter((c) => Date.parse(c.start) > Date.now())
   }
 
   private matching(): ScheduleClass[] {
     return this.upcoming().filter((c) => (!this.type || c.name === this.type) && (!this.instructor || c.instructor === this.instructor))
   }
 
+  /** Sunday-to-Saturday weeks, as on Arketa, from this week to the last day with classes. */
+  private weeks(): string[][] {
+    const today = dayKey(new Date())
+    const sunday = addDays(today, -noon(today).getUTCDay())
+    const last = this.upcoming().map((c) => dayKey(c.start)).sort().pop() ?? today
+    const out: string[][] = []
+    for (let start = sunday; start <= last || !out.length; start = addDays(start, 7)) out.push(Array.from({ length: 7 }, (_, i) => addDays(start, i)))
+    return out
+  }
+
   private render() {
     const all = this.upcoming()
     const shown = this.matching()
-    const days = this.days()
+    const weeks = this.weeks()
     const byDay = new Map<string, ScheduleClass[]>()
     for (const c of shown) byDay.set(dayKey(c.start), [...(byDay.get(dayKey(c.start)) ?? []), c])
-    // Start on the first day with something to book; a picked day that empties out moves on too.
-    if (!this.day || !days.includes(this.day)) this.day = days.find((d) => byDay.has(d)) ?? days[0]
-    if (!byDay.has(this.day)) {
-      const next = days.find((d) => d >= this.day! && byDay.has(d)) ?? days.find((d) => byDay.has(d))
-      if (next) this.day = next
-    }
-    this.week = days.indexOf(this.day) >= 7 ? 1 : 0
+    const bookable = (d: string) => byDay.get(d)?.some((c) => !c.canceled) ?? false
+    const flat = weeks.flat()
+    // Start on the first day with a class; a picked day that the filters empty moves to the next one that has one.
+    if (!this.day || !bookable(this.day)) this.day = flat.find((d) => d >= (this.day ?? '') && bookable(d)) ?? flat.find(bookable) ?? this.day ?? flat[0]
+    this.week = Math.max(0, weeks.findIndex((w) => w.includes(this.day!)))
+    const week = weeks[this.week]
 
     const types = [...new Set(all.map((c) => c.name))].sort()
     const people = [...new Set(all.map((c) => c.instructor).filter(Boolean))].sort()
     const option = (v: string, picked: string, label = v) => `<option value="${esc(v)}"${v === picked ? ' selected' : ''}>${esc(label)}</option>`
-    const week = days.slice(this.week * 7, this.week * 7 + 7)
-    const today = days[0]
     const list = byDay.get(this.day) ?? []
     const filtered = Boolean(this.type || this.instructor)
-    const heading = this.day === today ? 'Today' : fmt(noon(this.day), { weekday: 'long', month: 'long', day: 'numeric' })
+    const range = `${fmt(noon(week[0]), { month: 'long', day: 'numeric' })} — ${fmt(noon(week[6]), { month: 'long', day: 'numeric' })}`
+    const shortRange = `${fmt(noon(week[0]), { month: 'short', day: 'numeric' })} — ${fmt(noon(week[6]), { month: 'short', day: 'numeric' })}`
+    const count = list.filter((c) => !c.canceled).length
 
     this.shell().removeAttribute('aria-busy')
     this.shell().innerHTML = `
-      <div class="top">
-        <div class="week" role="group" aria-label="Day">
-          <button class="arrow prev" type="button" aria-label="Previous week"${this.week === 0 ? ' disabled' : ''}>${CHEVRON}</button>
-          <div class="days">
-            ${week
-              .map((d) => {
-                const date = noon(d)
-                const has = byDay.has(d)
-                return `<button class="day" type="button" data-day="${d}" aria-pressed="${d === this.day}"${has ? '' : ' disabled'} aria-label="${esc(fmt(date, { weekday: 'long', month: 'long', day: 'numeric' }))}${has ? '' : ', no classes'}">
-                  <span class="dow">${esc(fmt(date, { weekday: 'short' }))}</span><span class="num">${esc(fmt(date, { day: 'numeric' }))}</span></button>`
-              })
-              .join('')}
-          </div>
-          <button class="arrow next" type="button" aria-label="Next week"${this.week === 1 ? ' disabled' : ''}>${CHEVRON}</button>
-        </div>
-        <div class="filters">
-          <label class="filter"><span class="label">Class</span><span class="select"><select data-filter="type">${option('', this.type, 'All classes')}${types.map((t) => option(t, this.type)).join('')}</select>${CHEVRON}</span></label>
-          <label class="filter"><span class="label">Instructor</span><span class="select"><select data-filter="instructor">${option('', this.instructor, 'All instructors')}${people.map((p) => option(p, this.instructor)).join('')}</select>${CHEVRON}</span></label>
-        </div>
+      <div class="filters">
+        <label class="select"><span hidden>Class type</span><select data-filter="type" aria-label="Class type"${this.type ? '' : ' class="unset"'}>${option('', this.type, 'All Class Types')}${types.map((t) => option(t, this.type)).join('')}</select>${CARET}</label>
+        <label class="select"><span hidden>Instructor</span><select data-filter="instructor" aria-label="Instructor"${this.instructor ? '' : ' class="unset"'}>${option('', this.instructor, 'All Instructors')}${people.map((p) => option(p, this.instructor)).join('')}</select>${CARET}</label>
       </div>
-      <div class="heading">
-        <h3>${esc(heading)}</h3>
-        <span class="count">${filtered ? `${list.length} matching · <button class="clear" type="button">Show all classes</button>` : `${list.length} ${list.length === 1 ? 'class' : 'classes'}`}</span>
+      <div class="week">
+        <button class="arrow prev" type="button" aria-label="Previous week"${this.week === 0 ? ' hidden' : ''}>${CHEVRON}</button>
+        <span class="long">${esc(range)}</span><span class="short">${esc(shortRange)}</span>
+        <button class="arrow next" type="button" aria-label="Next week"${this.week >= weeks.length - 1 ? ' hidden' : ''}>${CHEVRON}</button>
       </div>
-      <div class="list" style="grid-template-rows: repeat(${Math.max(1, Math.ceil(list.length / 2))}, max-content)">
+      <div class="days" role="group" aria-label="Day">
+        ${week
+          .map((d) => {
+            const date = noon(d)
+            const has = bookable(d)
+            return `<button class="day" type="button" data-day="${d}" aria-pressed="${d === this.day}"${has ? '' : ' disabled'} aria-label="${esc(fmt(date, { weekday: 'long', month: 'long', day: 'numeric' }))}${has ? '' : ', no classes'}">
+              <span>${esc(fmt(date, { weekday: 'short' }))}</span><span class="num">${esc(fmt(date, { day: 'numeric' }))}</span></button>`
+          })
+          .join('')}
+      </div>
+      <h3 class="heading"><span>${esc(fmt(noon(this.day), { weekday: 'long', month: 'short', day: 'numeric' }))}</span>${
+        filtered ? `<span class="count">${count} matching · <button class="clear" type="button">Show all</button></span>` : ''
+      }</h3>
+      <div class="list">
         ${list.length ? list.map((c) => this.row(c)).join('') : `<p class="empty">${filtered ? 'No matching classes in the next two weeks.' : 'No classes left to book this day.'}</p>`}
       </div>`
 
-    this.shell().querySelectorAll<HTMLButtonElement>('.day').forEach((b) => b.addEventListener('click', () => { this.day = b.dataset.day!; this.render() }))
-    this.shell().querySelector('.prev')?.addEventListener('click', () => this.jumpWeek(0))
-    this.shell().querySelector('.next')?.addEventListener('click', () => this.jumpWeek(1))
-    this.shell().querySelector('.clear')?.addEventListener('click', () => { this.type = ''; this.instructor = ''; this.render() })
+    const on = (sel: string, fn: (el: HTMLElement) => void) => this.shell().querySelectorAll<HTMLElement>(sel).forEach((el) => el.addEventListener('click', () => fn(el)))
+    on('.day', (b) => { this.day = b.dataset.day!; this.render(); this.keepInView() })
+    on('.prev', () => this.jumpWeek(this.week - 1))
+    on('.next', () => this.jumpWeek(this.week + 1))
+    on('.clear', () => { this.type = ''; this.instructor = ''; this.render() })
+    on('.toggle', (b) => {
+      const id = b.dataset.id!
+      if (this.open.has(id)) this.open.delete(id)
+      else this.open.add(id)
+      const cls = b.closest('.cls')!
+      cls.querySelector('.details')?.toggleAttribute('hidden', !this.open.has(id))
+      b.setAttribute('aria-expanded', String(this.open.has(id)))
+    })
     this.shell().querySelectorAll<HTMLSelectElement>('select').forEach((s) =>
       s.addEventListener('change', () => {
         if (s.dataset.filter === 'type') this.type = s.value
@@ -250,40 +246,60 @@ class ClassSchedule extends HTMLElement {
     )
   }
 
-  /** Moving a week lands on that week's first day with classes. */
-  private jumpWeek(week: number) {
-    const days = this.days().slice(week * 7, week * 7 + 7)
-    const has = new Set(this.matching().map((c) => dayKey(c.start)))
-    this.day = days.find((d) => has.has(d)) ?? days[0]
+  /** After a shorter day replaces a longer one, the page may be scrolled past the schedule: bring its top back. */
+  private keepInView() {
+    const top = this.getBoundingClientRect().top
+    if (top < 0) window.scrollBy({ top: top - 16 })
+  }
+
+  /** Moving a week lands on that week's first day with a class. */
+  private jumpWeek(i: number) {
+    const week = this.weeks()[i]
+    if (!week) return
+    const has = new Set(this.matching().filter((c) => !c.canceled).map((c) => dayKey(c.start)))
+    this.day = week.find((d) => has.has(d)) ?? week[0]
+    this.week = i
     this.render()
   }
 
   private row(c: ScheduleClass): string {
     const start = new Date(c.start)
+    const time = `${fmt(start, { hour: '2-digit', minute: '2-digit' })} ${start.toLocaleTimeString('en-US', { timeZone: TZ, timeZoneName: 'short' }).split(' ').pop()} • (${c.minutes} min)`
     const full = c.spotsLeft === 0
-    const spots = c.spotsLeft === null ? '' : full ? (c.waitlist ? `Full · ${c.waitlist} on waitlist` : 'Full') : `${c.spotsLeft} ${c.spotsLeft === 1 ? 'spot' : 'spots'} left`
-    const low = c.spotsLeft !== null && c.spotsLeft > 0 && c.spotsLeft <= 2
-    const label = `${full ? 'Join the waitlist for' : 'Book'} ${c.name}${c.instructor ? ` with ${c.instructor}` : ''}, ${fmt(start, { weekday: 'long', hour: 'numeric', minute: '2-digit' })}`
-    return `<div class="row">
-      <div class="time">${esc(fmt(start, { hour: 'numeric', minute: '2-digit' }))}<small>${c.minutes} min</small></div>
-      <div class="what"><div class="name">${esc(c.name)}</div>${c.instructor ? `<div class="who">with ${esc(c.instructor)}</div>` : ''}</div>
-      <div class="side"><span class="spots${low ? ' low' : ''}">${esc(spots)}</span>
-        <a class="book${full ? ' wait' : ''}" href="${checkout(c.id)}" target="_blank" rel="noopener" aria-label="${esc(label)}">${full ? 'Waitlist' : 'Book'}</a></div>
+    const notes = [
+      c.spotsLeft !== null && c.spotsLeft > 0 && c.spotsLeft <= FEW_SPOTS ? `${c.spotsLeft} ${c.spotsLeft === 1 ? 'spot' : 'spots'} left` : '',
+      c.waitlist > 0 ? `${c.waitlist} on waitlist` : '',
+    ].filter(Boolean)
+    const studio = this.data?.location ?? ''
+    const desc = this.data?.descriptions[c.name]
+    const person = c.instructor ? this.data?.instructors[c.instructor] : undefined
+    const open = this.open.has(c.id)
+    const initials = c.instructor.split(' ').map((w) => w[0]).join('').slice(0, 2)
+    const details =
+      desc || person?.bio
+        ? `<div class="details"${open ? '' : ' hidden'}>
+            ${desc ?? ''}
+            ${person ? `<div class="person">${person.photo ? `<img class="photo" src="${esc(person.photo)}" alt="" loading="lazy" width="60" height="60">` : `<span class="photo" aria-hidden="true">${esc(initials)}</span>`}${esc(c.instructor)}</div>${person.bio ?? ''}` : ''}
+          </div>`
+        : ''
+    const label = `${full ? 'Join the waitlist for' : 'Sign up for'} ${c.name}${c.instructor ? ` with ${c.instructor}` : ''}, ${fmt(start, { weekday: 'long', hour: 'numeric', minute: '2-digit' })}`
+    return `<div class="cls">
+      <div class="row">
+        <div class="info">
+          <p>${esc(time)}</p>
+          <p class="name">${esc(c.name)}</p>
+          ${c.instructor ? `<p class="who">${esc(c.instructor)}</p>` : ''}
+          <p>${esc(STUDIO_LINE[studio] ?? studio)}</p>
+          ${details && !c.canceled ? `<button class="toggle" type="button" data-id="${esc(c.id)}" aria-expanded="${open}">View Details</button>` : ''}
+        </div>
+        ${
+          c.canceled
+            ? '<div class="canceled">Canceled</div>'
+            : `<div class="act">${notes.length ? `<span class="spots">${notes.map(esc).join('<br>')}</span>` : ''}<a class="book" href="${checkout(c.id)}" target="_blank" rel="noopener" aria-label="${esc(label)}">${full ? 'Waitlist' : 'Sign Up'}</a></div>`
+        }
+      </div>
+      ${c.canceled ? '' : details}
     </div>`
-  }
-}
-
-function loadFonts(base: string) {
-  if (document.getElementById('craft-fonts')) return
-  const style = document.createElement('style')
-  style.id = 'craft-fonts'
-  style.textContent = fontFaces(base)
-  document.head.append(style)
-  if (!document.querySelector(`link[href="${EPILOGUE}"]`)) {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = EPILOGUE
-    document.head.append(link)
   }
 }
 
@@ -295,6 +311,6 @@ if (script?.src) {
   const el = document.createElement('craft-class-schedule')
   el.setAttribute('data-location', script.dataset.location ?? 'park-slope')
   el.setAttribute('data-api', new URL(script.src).origin)
-  if (script.dataset.theme) el.setAttribute('data-theme', script.dataset.theme)
+  if (script.dataset.height) el.setAttribute('data-height', script.dataset.height)
   script.after(el)
 }
