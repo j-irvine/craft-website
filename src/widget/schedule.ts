@@ -101,9 +101,9 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid
    with the button (owners, 14 Nov 2026: smaller text perched above it looked out of place). */
 .spots { font-size: 16px; line-height: 22px; text-align: right; }
 .spots .few { color: var(--accent); font-weight: 700; }
-.more { display: flex; justify-content: center; padding: 28px 0 8px; }
-.show-more { font: 16px/24px var(--font); border-radius: 4px; padding: 6px 16px; cursor: pointer; border: 1px solid var(--accent); background: transparent; color: var(--accent); }
-.show-more:hover { background: var(--accent); color: var(--on-accent); }
+.more { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 16px; padding: 28px 0 8px; }
+.show-more, .pick-day { font: 16px/24px var(--font); border-radius: 4px; padding: 6px 16px; cursor: pointer; border: 1px solid var(--accent); background: transparent; color: var(--accent); }
+.show-more:hover, .pick-day:hover { background: var(--accent); color: var(--on-accent); }
 .heading.extra { margin-top: 40px; }
 .book { display: inline-block; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); text-decoration: none; white-space: nowrap; }
 .book:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
@@ -240,13 +240,22 @@ class ClassSchedule extends HTMLElement {
           .map((d) => `<h3 class="heading extra"><span>${esc(fmt(noon(d), { weekday: 'long', month: 'short', day: 'numeric' }))}</span></h3>${(byDay.get(d) ?? []).map((c) => this.row(c)).join('')}`)
           .join('')}
       </div>
-      ${hasMore ? '<div class="more"><button class="show-more" type="button">Show More</button></div>' : ''}`
+      ${
+        // "Pick Another Day" goes back up to the week bar, keeping the day (owners, 14 Nov 2026).
+        hasMore || list.length
+          ? `<div class="more">${hasMore ? '<button class="show-more" type="button">Show More</button>' : ''}<button class="pick-day" type="button">Pick Another Day</button></div>`
+          : ''
+      }`
 
     const on = (sel: string, fn: (el: HTMLElement) => void) => this.shell().querySelectorAll<HTMLElement>(sel).forEach((el) => el.addEventListener('click', () => fn(el)))
     on('.day', (b) => { this.day = b.dataset.day!; this.more = 0; this.render(); this.keepInView() })
     on('.prev', () => this.jumpWeek(this.week - 1))
     on('.next', () => this.jumpWeek(this.week + 1))
     on('.show-more', () => { this.more++; this.render() })
+    on('.pick-day', () => {
+      const week = this.root.querySelector('.week') as HTMLElement | null
+      if (week) window.scrollBy({ top: week.getBoundingClientRect().top - 100, behavior: 'smooth' })
+    })
     on('.clear', () => { this.type = ''; this.instructor = ''; this.more = 0; this.render() })
     on('.toggle', (b) => {
       const id = b.dataset.id!
