@@ -117,6 +117,9 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid
 .empty { padding: 24px 5px; }
 
 @container (max-width: 600px) {
+  /* On a phone Showit's box runs nearly edge to edge, so keep the schedule off the screen's sides (as Arketa's
+     embed did). */
+  .cs > :not(.note) { margin-inline: 16px; }
   .filters { grid-template-columns: minmax(0, 1fr); padding-bottom: 18px; }
   .days { padding: 8px 0 26px; }
   .week .long { display: none; }
