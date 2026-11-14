@@ -96,17 +96,15 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid
 .who { font-weight: 700; }
 .toggle { margin-top: 8px; font: inherit; color: var(--accent); background: none; border: 1px solid transparent; border-radius: 4px; padding: 0; cursor: pointer; }
 .toggle:hover { text-decoration: underline; }
-.act { flex: none; margin-bottom: 32px; }
-/* Spots left (3 or fewer) and the waitlist sit in the class's own lines, under the studio (owners, 14 Nov 2026:
-   beside the button they looked out of place). */
-.spots { margin-top: 2px !important; }
+.act { flex: none; display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+/* Spots left (3 or fewer) and the waitlist: beside the button, the size of the class's own text, lined up
+   with the button (owners, 14 Nov 2026: smaller text perched above it looked out of place). */
+.spots { font-size: 16px; line-height: 22px; text-align: right; }
 .spots .few { color: var(--accent); font-weight: 700; }
-.more { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 16px; padding: 28px 0 8px; }
-.more button { font: 16px/24px var(--font); border-radius: 4px; padding: 6px 14px; cursor: pointer; border: 1px solid var(--accent); }
-.next-day { background: var(--accent); color: var(--on-accent); }
-.next-day:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.to-top { background: transparent; color: var(--accent); }
-.to-top:hover { background: rgba(181, 72, 38, .08); }
+.more { display: flex; justify-content: center; padding: 28px 0 8px; }
+.show-more { font: 16px/24px var(--font); border-radius: 4px; padding: 6px 16px; cursor: pointer; border: 1px solid var(--accent); background: transparent; color: var(--accent); }
+.show-more:hover { background: var(--accent); color: var(--on-accent); }
+.heading.extra { margin-top: 40px; }
 .book { display: inline-block; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); text-decoration: none; white-space: nowrap; }
 .book:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 .canceled { color: var(--text); font-weight: 700; margin-bottom: 30px; }
@@ -126,7 +124,8 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid
   .day .num { width: 34px; height: 34px; line-height: 34px; font-size: 17px; }
   .heading { font-size: 19px; letter-spacing: 2.4px; flex-wrap: wrap; }
   .cls { padding: 18px 2px 16px; }
-  .act { margin-bottom: 32px; }
+  .act { flex-direction: column; align-items: flex-end; gap: 8px; margin-bottom: 32px; }
+  .spots { font-size: 15px; line-height: 20px; }
 }
 `
 
@@ -138,6 +137,8 @@ class ClassSchedule extends HTMLElement {
   private type = ''
   private instructor = ''
   private open = new Set<string>()
+  /** Days added under the picked one with Show More. */
+  private more = 0
 
   connectedCallback() {
     this.root.innerHTML = `<style>${SCHEDULE_CSS}</style><div class="cs" aria-busy="true"><p class="note">Loading the schedule…</p></div>`
@@ -202,7 +203,11 @@ class ClassSchedule extends HTMLElement {
     const filtered = Boolean(this.type || this.instructor)
     const range = `${fmt(noon(week[0]), { month: 'long', day: 'numeric' })} — ${fmt(noon(week[6]), { month: 'long', day: 'numeric' })}`
     const shortRange = `${fmt(noon(week[0]), { month: 'short', day: 'numeric' })} — ${fmt(noon(week[6]), { month: 'short', day: 'numeric' })}`
-    const nextDay = flat.find((d) => d > this.day! && bookable(d))
+    // The picked day, then any added with Show More (owners, 14 Nov 2026: like Arketa's, it adds the next day
+    // with classes under the ones showing).
+    const after = flat.filter((d) => d > this.day! && bookable(d))
+    const extra = after.slice(0, this.more)
+    const hasMore = after.length > extra.length
     const count = list.filter((c) => !c.canceled).length
 
     this.shell().removeAttribute('aria-busy')
@@ -231,22 +236,18 @@ class ClassSchedule extends HTMLElement {
       }</h3>
       <div class="list">
         ${list.length ? list.map((c) => this.row(c)).join('') : `<p class="empty">${filtered ? 'No matching classes in the next two weeks.' : 'No classes left to book this day.'}</p>`}
+        ${extra
+          .map((d) => `<h3 class="heading extra"><span>${esc(fmt(noon(d), { weekday: 'long', month: 'short', day: 'numeric' }))}</span></h3>${(byDay.get(d) ?? []).map((c) => this.row(c)).join('')}`)
+          .join('')}
       </div>
-      ${
-        // The list ends with the day, so say so (owners, 14 Nov 2026: Arketa's ends with "Show More"): the next
-        // day with classes, or back up to the days to pick another.
-        nextDay || list.length > 3
-          ? `<div class="more">${nextDay ? `<button class="next-day" type="button" data-day="${nextDay}">${esc(fmt(noon(nextDay), { weekday: 'long' }))}'s classes</button>` : ''}<button class="to-top" type="button">Pick another day</button></div>`
-          : ''
-      }`
+      ${hasMore ? '<div class="more"><button class="show-more" type="button">Show More</button></div>' : ''}`
 
     const on = (sel: string, fn: (el: HTMLElement) => void) => this.shell().querySelectorAll<HTMLElement>(sel).forEach((el) => el.addEventListener('click', () => fn(el)))
-    on('.day', (b) => { this.day = b.dataset.day!; this.render(); this.keepInView() })
+    on('.day', (b) => { this.day = b.dataset.day!; this.more = 0; this.render(); this.keepInView() })
     on('.prev', () => this.jumpWeek(this.week - 1))
     on('.next', () => this.jumpWeek(this.week + 1))
-    on('.next-day', (b) => { this.day = b.dataset.day!; this.render(); this.toDays() })
-    on('.to-top', () => this.toDays())
-    on('.clear', () => { this.type = ''; this.instructor = ''; this.render() })
+    on('.show-more', () => { this.more++; this.render() })
+    on('.clear', () => { this.type = ''; this.instructor = ''; this.more = 0; this.render() })
     on('.toggle', (b) => {
       const id = b.dataset.id!
       if (this.open.has(id)) this.open.delete(id)
@@ -257,19 +258,12 @@ class ClassSchedule extends HTMLElement {
     })
     this.shell().querySelectorAll<HTMLSelectElement>('select').forEach((s) =>
       s.addEventListener('change', () => {
+        this.more = 0
         if (s.dataset.filter === 'type') this.type = s.value
         else this.instructor = s.value
         this.render()
       }),
     )
-  }
-
-  /** Scrolls the page back up to the day picker. */
-  private toDays() {
-    const days = this.root.querySelector('.days') as HTMLElement | null
-    if (!days) return
-    const top = days.getBoundingClientRect().top
-    if (top < 0 || top > window.innerHeight) window.scrollBy({ top: top - 120, behavior: 'smooth' })
   }
 
   /** After a shorter day replaces a longer one, the page may be scrolled past the schedule: bring its top back. */
@@ -285,6 +279,7 @@ class ClassSchedule extends HTMLElement {
     const has = new Set(this.matching().filter((c) => !c.canceled).map((c) => dayKey(c.start)))
     this.day = week.find((d) => has.has(d)) ?? week[0]
     this.week = i
+    this.more = 0
     this.render()
   }
 
@@ -316,13 +311,12 @@ class ClassSchedule extends HTMLElement {
           <p class="name">${esc(c.name)}</p>
           ${c.instructor ? `<p class="who">${esc(c.instructor)}</p>` : ''}
           <p>${esc(studio)}</p>
-          ${notes.length ? `<p class="spots">${notes.join(' • ')}</p>` : ''}
           ${details && !c.canceled ? `<button class="toggle" type="button" data-id="${esc(c.id)}" aria-expanded="${open}">View Details</button>` : ''}
         </div>
         ${
           c.canceled
             ? '<div class="canceled">Canceled</div>'
-            : `<div class="act"><a class="book" href="${checkout(c.id)}" target="_blank" rel="noopener" aria-label="${esc(label)}">${full ? 'Waitlist' : 'Sign Up'}</a></div>`
+            : `<div class="act">${notes.length ? `<span class="spots">${notes.join('<br>')}</span>` : ''}<a class="book" href="${checkout(c.id)}" target="_blank" rel="noopener" aria-label="${esc(label)}">${full ? 'Waitlist' : 'Sign Up'}</a></div>`
         }
       </div>
       ${c.canceled ? '' : details}
