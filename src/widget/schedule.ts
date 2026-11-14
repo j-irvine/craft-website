@@ -154,7 +154,7 @@ class ClassSchedule extends HTMLElement {
   /**
    * The page's "Take a class" buttons link to Arketa's schedule for one class type (…/schedule?template=<id>).
    * Instead, they bring the page up to this schedule with that class type picked (owners, 14 Nov 2026). Once the
-   * schedule loads, each such link that has classes in the next two weeks is pointed here instead (so nothing
+   * schedule loads, each such link that has classes coming up is pointed here instead (so nothing
    * else on the page opens Arketa first); one with nothing coming up keeps its Arketa link.
    */
   private claimLinks() {
@@ -284,7 +284,7 @@ class ClassSchedule extends HTMLElement {
         filtered ? `<span class="count">${count} matching · <button class="clear" type="button">Show all</button></span>` : ''
       }</h3>
       <div class="list">
-        ${list.length ? list.map((c) => this.row(c)).join('') : `<p class="empty">${filtered ? 'No matching classes in the next two weeks.' : 'No classes left to book this day.'}</p>`}
+        ${list.length ? list.map((c) => this.row(c)).join('') : `<p class="empty">${filtered ? 'No matching classes coming up.' : 'No classes left to book this day.'}</p>`}
         ${extra
           .map((d) => `<h3 class="heading extra"><span>${esc(fmt(noon(d), { weekday: 'long', month: 'short', day: 'numeric' }))}</span></h3>${(byDay.get(d) ?? []).map((c) => this.row(c)).join('')}`)
           .join('')}

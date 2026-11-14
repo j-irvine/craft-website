@@ -66,7 +66,7 @@ describe('shortNames', () => {
 })
 
 describe('fetchSchedule', () => {
-  it('asks for two weeks from New York midnight at that studio', async () => {
+  it('asks for 12 weeks from New York midnight at that studio', async () => {
     let asked = ''
     const fetcher = (async (u: string) => {
       asked = u
@@ -75,7 +75,7 @@ describe('fetchSchedule', () => {
     await fetchSchedule('park-slope', 'Park Slope', now, fetcher)
     const q = new URL(asked).searchParams
     expect(q.get('startDateTime')).toBe('2026-11-14T05:00:00.000Z')
-    expect(q.get('endDateTime')).toBe('2026-11-28T04:59:59.000Z')
+    expect(q.get('endDateTime')).toBe('2027-02-06T04:59:59.000Z')
     expect(q.get('locationId')).toBe('67ptpiCjvCsriKuEdItN')
   })
 })

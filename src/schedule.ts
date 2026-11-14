@@ -8,8 +8,12 @@ import { WIDGET_API } from './arketa'
 import { ARKETA_LOCATIONS, type Location } from './instructors'
 import { nyDate } from './availability'
 
-/** How many days ahead the schedule shows, from today. Two weeks, as Arketa's booking window. */
-export const SCHEDULE_DAYS = 14
+/**
+ * How many days ahead the schedule shows, from today: 12 weeks (owners, 14 Nov 2026: Arketa's embed goes on
+ * indefinitely; two weeks was too short). One request to Arketa covers it (about 3 MB from Arketa, about 100 KB
+ * once trimmed).
+ */
+export const SCHEDULE_DAYS = 84
 
 /**
  * Classes hidden on Arketa's public schedule that are joined only on Arketa (members-only). Arketa's widget
