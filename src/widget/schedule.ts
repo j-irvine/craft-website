@@ -294,7 +294,8 @@ class ClassSchedule extends HTMLElement {
 
   private row(c: ScheduleClass): string {
     const start = new Date(c.start)
-    const time = `${fmt(start, { hour: '2-digit', minute: '2-digit' })} ${start.toLocaleTimeString('en-US', { timeZone: TZ, timeZoneName: 'short' }).split(' ').pop()} • (${c.minutes} min)`
+    // "8:00 AM • 50 min" (owners, 14 Nov 2026: no leading zero, time zone or brackets).
+    const time = `${fmt(start, { hour: 'numeric', minute: '2-digit' })} • ${c.minutes} min`
     const full = c.spotsLeft === 0
     const notes = [
       c.spotsLeft !== null && c.spotsLeft > 0 && c.spotsLeft <= FEW_SPOTS ? `<span class="few">${c.spotsLeft} ${c.spotsLeft === 1 ? 'spot' : 'spots'} left</span>` : '',
