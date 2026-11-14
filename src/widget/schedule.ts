@@ -193,6 +193,20 @@ class ClassSchedule extends HTMLElement {
     if (first === this) window.scrollBy({ top: this.getBoundingClientRect().top - 80, behavior: 'smooth' })
   }
 
+  /**
+   * Showit grows an auto-height section ("dH") to fit its embed, but it picks which embeds to watch when the
+   * page starts, before this script has added the schedule, so it would keep the section at its editor height
+   * and cut the schedule off (14 Nov 2026, on launch). Asking Showit to look again once the schedule is on the
+   * page makes it watch it from then on. S5 is Showit's page engine; elsewhere it isn't there and this does nothing.
+   */
+  private growSection() {
+    try {
+      ;(window as unknown as { S5?: { initDynamicContentTracking?: () => void } }).S5?.initDynamicContentTracking?.()
+    } catch {
+      // Not on Showit, or its engine changed: the schedule still shows, in the section's set height.
+    }
+  }
+
   private shell() {
     return this.root.querySelector('.cs') as HTMLElement
   }
@@ -208,6 +222,7 @@ class ClassSchedule extends HTMLElement {
       }
       this.render()
       this.claimLinks()
+      this.growSection()
     } catch {
       this.shell().innerHTML = `<p class="note">We couldn't load the schedule just now. Please try again in a minute, or <a href="https://app.arketa.co/craftpilates/schedule" target="_blank" rel="noopener">see it on our booking site</a>.</p>`
     }
@@ -393,5 +408,8 @@ if (script?.src) {
   el.setAttribute('data-location', script.dataset.location ?? 'park-slope')
   el.setAttribute('data-api', new URL(script.src).origin)
   if (script.dataset.height) el.setAttribute('data-height', script.dataset.height)
-  script.after(el)
+  // In a plain <div>: Showit only grows an auto-height section around an embed that holds an iframe or a div.
+  const box = document.createElement('div')
+  box.append(el)
+  script.after(box)
 }
