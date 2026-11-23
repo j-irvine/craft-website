@@ -41,6 +41,20 @@ export function nyDate(now: Date, days = 0): string {
   return new Date(now.getTime() + days * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 }
 
+/** Splits start..end (YYYY-MM-DD, inclusive) into ranges within one calendar month each. */
+export function monthRanges(start: string, end: string): [string, string][] {
+  const out: [string, string][] = []
+  let from = start
+  while (from <= end) {
+    const [y, m] = from.split('-').map(Number)
+    const last = `${from.slice(0, 7)}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`
+    out.push([from, last < end ? last : end])
+    if (last >= end) break
+    from = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10)
+  }
+  return out
+}
+
 /** The days Arketa says have open times, or null when the reply isn't what we expect. */
 export function daysFromReply(body: unknown): string[] | null {
   if (!Array.isArray(body)) return null
@@ -91,8 +105,14 @@ export async function fetchSoonest(
       const found: Record<string, string> = {}
       for (const service of Object.values(ARKETA_SERVICES[location])) {
         const common = { instructorId: 'any', locationId: ARKETA_LOCATIONS[location], roomId: '', timezone: 'America/New_York' }
-        const days = daysFromReply(await get(`${base(service)}/availableDays?${new URLSearchParams({ ...common, startDate: nyDate(now), endDate: nyDate(now, LOOKAHEAD_DAYS) })}`))
-        if (!days) throw new Error('unexpected reply for days')
+        // Arketa refuses a range that spans two months, so ask month by month (17 to 23 Nov 2026 every read
+        // failed once the 14 days ran into December, and everyone showed).
+        const days: string[] = []
+        for (const [startDate, endDate] of monthRanges(nyDate(now), nyDate(now, LOOKAHEAD_DAYS))) {
+          const part = daysFromReply(await get(`${base(service)}/availableDays?${new URLSearchParams({ ...common, startDate, endDate })}`))
+          if (!part) throw new Error('unexpected reply for days')
+          days.push(...part)
+        }
         const teachers = hosts[service]
         for (const date of days) {
           const times = timesFromReply(await get(`${base(service)}/availableTimes?${new URLSearchParams({ ...common, date, noClasses: 'true' })}`))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bySoonest, daysFromReply, fetchSoonest, nyDate, soonestDue, timesFromReply, usableSoonest } from '../src/availability'
+import { bySoonest, daysFromReply, fetchSoonest, monthRanges, nyDate, soonestDue, timesFromReply, usableSoonest } from '../src/availability'
 import { ARKETA_SERVICES } from '../src/instructors'
 
 // Shapes as Arketa's widget API returned them on 3 Nov 2026; ids and times made up.
@@ -52,6 +52,34 @@ describe('fetchSoonest', () => {
     // Private: days + 6th + 9th (not the 10th). Duet: days + 4th + 5th (a's 6th from privates doesn't stop
     // it after the 4th, but its 5th does, so not the 12th). UWS: one failed call.
     expect(requests).toBe(7)
+  })
+
+  it('asks for days one month at a time, since Arketa refuses a range across two months', async () => {
+    const asked: string[] = []
+    const strict = (async (input: string) => {
+      const url = new URL(input)
+      if (url.pathname.endsWith('/availableDays')) {
+        const [from, to] = [url.searchParams.get('startDate')!, url.searchParams.get('endDate')!]
+        asked.push(`${from}..${to}`)
+        if (from.slice(0, 7) !== to.slice(0, 7)) return Response.json({ error: 'start date and end date must be in the same month' }, { status: 400 })
+        return Response.json(from.startsWith('2026-12') ? [{ date: '2026-12-02T00:00:00-05:00', isAvailable: true }] : [])
+      }
+      return Response.json({ slots: [slot('a', '2026-12-02T15:00:00.000Z')] })
+    }) as typeof fetch
+    const { soonest, errors } = await fetchSoonest({}, new Date('2026-11-23T18:00:00Z'), strict)
+    expect(errors).toEqual([])
+    expect(soonest['park-slope']).toEqual({ a: '2026-12-02T15:00:00.000Z' })
+    expect(asked).toContain('2026-11-23..2026-11-30')
+    expect(asked).toContain('2026-12-01..2026-12-07')
+  })
+})
+
+describe('monthRanges', () => {
+  it('splits a range at each month end', () => {
+    expect(monthRanges('2026-11-23', '2026-12-07')).toEqual([['2026-11-23', '2026-11-30'], ['2026-12-01', '2026-12-07']])
+    expect(monthRanges('2026-12-20', '2027-01-03')).toEqual([['2026-12-20', '2026-12-31'], ['2027-01-01', '2027-01-03']])
+    expect(monthRanges('2027-02-20', '2027-03-06')).toEqual([['2027-02-20', '2027-02-28'], ['2027-03-01', '2027-03-06']])
+    expect(monthRanges('2026-12-01', '2026-12-15')).toEqual([['2026-12-01', '2026-12-15']])
   })
 })
 
