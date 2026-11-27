@@ -33,6 +33,11 @@ describe('scheduleFromReply', () => {
     expect(s.classes.find((c) => c.id === 'off')!.canceled).toBe(true)
   })
 
+  it('shows events such as Sound Bath Pilates like classes, and nothing of another kind', () => {
+    const s = read([cls({ id: 'sb', name: 'Sound Bath Pilates ', experience_type: 'Event' }), cls({ id: 'x', experience_type: 'Appointment' })])
+    expect(s.classes.map((c) => [c.id, c.name])).toEqual([['sb', 'Sound Bath Pilates']])
+  })
+
   it('says a full class is full, with its waitlist', () => {
     const [c] = read([cls({ total_booked: 9, waitlistLength: 2 })]).classes
     expect(c.spotsLeft).toBe(0)
