@@ -21,6 +21,12 @@ export const SCHEDULE_DAYS = 84
  */
 export const MEMBERS_ONLY = ['craft circle']
 
+/**
+ * Arketa's kinds of schedule entry shown: classes, and events such as Sound Bath Pilates (owners, 27 Nov 2026), which
+ * come through the same way and sign up on the same checkout page, where the ticket is bought.
+ */
+const SHOWN_TYPES = ['Class', 'Event']
+
 /** One class as the embed shows it. */
 export interface ScheduleClass {
   /** Arketa's class id, for its checkout page. */
@@ -116,7 +122,7 @@ export function scheduleFromReply(body: unknown, location: string, now = new Dat
   const rows = (raw as Raw[]).filter(
     (c) =>
       typeof c?.id === 'string' && typeof c.name === 'string' && typeof c.start_time === 'number' &&
-      (c.display ?? 'public') === 'public' && (c.experience_type ?? 'Class') === 'Class' &&
+      (c.display ?? 'public') === 'public' && SHOWN_TYPES.includes(String(c.experience_type ?? 'Class')) &&
       !MEMBERS_ONLY.some((m) => clean(c.name as string).toLowerCase().includes(m)) &&
       (c.start_time as number) * 1000 > now.getTime(),
   )
